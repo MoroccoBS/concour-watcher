@@ -7,7 +7,7 @@ import { discoverSourceLinks } from "@/server/scraper";
 export const concoursWatcherEveryTenMinutes = schedules.task({
   id: "concours-watcher-every-10-minutes",
   cron: {
-    pattern: "*/10 * * * *",
+    pattern: "*/30 * * * *",
     timezone: "Africa/Casablanca",
     environments: ["PRODUCTION"],
   },
@@ -22,7 +22,7 @@ export const concoursWatcherEveryTenMinutes = schedules.task({
     const links = await discoverSourceLinks();
     const discovery = await upsertDiscoveredPdfs(links);
     const processing = await processPendingDocuments(
-      Number(process.env.TRIGGER_PROCESS_LIMIT ?? 5),
+      Number(process.env.TRIGGER_PROCESS_LIMIT ?? 1),
     );
 
     return {
