@@ -34,13 +34,23 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
     .onConflictDoNothing({ target: concoursDocuments.pdfUrl })
     .returning();
 
-  for (const item of inserted) {
+  const important = inserted.filter((item) => item.isImportant).slice(0, 5);
+  for (const item of important) {
     await sendTelegramMessage(
       [
-        "<b>New concours PDF found</b>",
+        "<b>New likely-relevant concours PDF found</b>",
         item.title,
-        item.isImportant ? "Likely relevant: yes" : "Likely relevant: maybe",
         item.pdfUrl,
+      ].join("\n"),
+    );
+  }
+
+  if (inserted.length > important.length) {
+    await sendTelegramMessage(
+      [
+        "<b>Concours discovery summary</b>",
+        `${inserted.length} new PDFs inserted.`,
+        `${important.length} likely-relevant PDFs alerted individually.`,
       ].join("\n"),
     );
   }

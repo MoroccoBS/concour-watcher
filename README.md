@@ -57,7 +57,7 @@ Deploy:
 pnpm worker:deploy
 ```
 
-The Worker runs every 30 minutes and posts newly discovered PDF links to the app.
+The Worker runs every 30 minutes and triggers the Vercel ingest endpoint. Vercel performs the ministry-page scrape and writes new links to Neon.
 
 ### GitHub Actions
 

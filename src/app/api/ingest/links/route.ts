@@ -16,7 +16,9 @@ function assertIngestToken(request: Request) {
 export async function POST(request: Request) {
   try {
     assertIngestToken(request);
-    const body = await request.json().catch(() => ({}));
+    const body = (await request.json().catch(() => ({}))) as {
+      links?: unknown;
+    };
     const links =
       Array.isArray(body.links) && body.links.length > 0
         ? body.links

@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { upsertDiscoveredPdfs } from "@/server/documents";
 import { discoverSourceLinks } from "@/server/scraper";
 

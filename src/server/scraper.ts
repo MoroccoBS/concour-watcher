@@ -19,16 +19,7 @@ async function fetchSource(fetcher: typeof fetch, sourcePageUrl: string) {
   try {
     return await fetcher(sourcePageUrl, { headers });
   } catch (error) {
-    const cause =
-      error && typeof error === "object" && "cause" in error
-        ? String((error as { cause?: unknown }).cause)
-        : "";
-    const message = `${error instanceof Error ? error.message : String(error)} ${cause}`;
-    if (
-      typeof process !== "undefined" &&
-      sourcePageUrl.startsWith("https://drh.sante.gov.ma") &&
-      /certificate|TLS|VERIFY|leaf/i.test(message)
-    ) {
+    if (typeof process !== "undefined" && sourcePageUrl.startsWith("https://drh.sante.gov.ma")) {
       const { Agent } = await import("undici");
       return fetcher(sourcePageUrl, {
         headers,
