@@ -28,7 +28,7 @@ export const aiExtractionSchema = z.object({
       z.object({
         field: z.string(),
         page: z.number().int().positive().nullable().optional(),
-        evidence: z.string(),
+        evidence: z.string().optional().default(""),
       }),
     )
     .default([]),

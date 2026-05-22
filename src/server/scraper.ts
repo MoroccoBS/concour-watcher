@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 
 import { absoluteMinistryUrl } from "@/lib/utils";
 import { importantLinkKeywords, ministrySources } from "./sources";
+import { fetchMinistryResource } from "./ministry-fetch";
 
 export type DiscoveredPdf = {
   sourcePageUrl: string;
@@ -10,28 +11,6 @@ export type DiscoveredPdf = {
   region?: string;
   isImportant: boolean;
 };
-
-async function fetchSource(fetcher: typeof fetch, sourcePageUrl: string) {
-  const headers = {
-    "user-agent": "cncr-watcher/1.0 (+personal concours notification utility)",
-  };
-
-  try {
-    return await fetcher(sourcePageUrl, { headers });
-  } catch (error) {
-    if (typeof process !== "undefined" && sourcePageUrl.startsWith("https://drh.sante.gov.ma")) {
-      const { Agent } = await import("undici");
-      return fetcher(sourcePageUrl, {
-        headers,
-        dispatcher: new Agent({
-          connect: { rejectUnauthorized: false },
-        }),
-      } as RequestInit);
-    }
-
-    throw error;
-  }
-}
 
 function cleanText(value: string) {
   return value.replace(/\u200b/g, "").replace(/\s+/g, " ").trim();
@@ -79,7 +58,10 @@ export async function discoverSourceLinks(
   const results: DiscoveredPdf[] = [];
 
   for (const sourcePageUrl of sources) {
-    const response = await fetchSource(fetcher, sourcePageUrl);
+    const response =
+      fetcher === fetch
+        ? await fetchMinistryResource(sourcePageUrl)
+        : await fetcher(sourcePageUrl);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch ${sourcePageUrl}: ${response.status}`);

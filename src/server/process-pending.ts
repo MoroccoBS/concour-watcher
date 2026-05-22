@@ -9,37 +9,18 @@ import {
 } from "./documents";
 import { sendTelegramMessage } from "./telegram";
 import { validateExtraction } from "./validation";
-
-async function fetchPdf(url: string) {
-  try {
-    return await fetch(url);
-  } catch (error) {
-    if (
-      typeof process !== "undefined" &&
-      (url.startsWith("https://drh.sante.gov.ma") ||
-        url.startsWith("https://auth-drh.sante.gov.ma"))
-    ) {
-      const { Agent } = await import("undici");
-      return fetch(url, {
-        dispatcher: new Agent({
-          connect: { rejectUnauthorized: false },
-        }),
-      } as RequestInit);
-    }
-
-    throw error;
-  }
-}
+import { fetchMinistryResource } from "./ministry-fetch";
 
 export async function processPendingDocuments(limit = 5) {
   if (!db) throw new Error("DATABASE_URL is not configured.");
 
+  const statuses: Array<"pending" | "failed"> = ["pending"];
+  if (process.env.PROCESS_RETRY_FAILED === "true") {
+    statuses.push("failed");
+  }
+
   const pending = await db.query.concoursDocuments.findMany({
-    where: inArray(concoursDocuments.processingStatus, [
-      "pending",
-      "needs_review",
-      "failed",
-    ]),
+    where: inArray(concoursDocuments.processingStatus, statuses),
     orderBy: [desc(concoursDocuments.isImportant), asc(concoursDocuments.discoveredAt)],
     limit,
   });
@@ -53,7 +34,7 @@ export async function processPendingDocuments(limit = 5) {
       .where(eq(concoursDocuments.id, document.id));
 
     try {
-      const response = await fetchPdf(document.pdfUrl);
+      const response = await fetchMinistryResource(document.pdfUrl);
       if (!response.ok) {
         throw new Error(`PDF download failed: ${response.status}`);
       }

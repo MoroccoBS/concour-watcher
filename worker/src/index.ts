@@ -40,6 +40,15 @@ const worker = {
     await run(env);
   },
   async fetch(_request: Request, env: Env) {
+    if (_request.method === "GET") {
+      return Response.json({
+        ok: true,
+        role: "health-and-optional-trigger",
+        hasIngestEndpoint: Boolean(env.INGEST_ENDPOINT),
+        hasIngestToken: Boolean(env.INGEST_TOKEN),
+      });
+    }
+
     try {
       const result = await run(env);
       return Response.json(result);
