@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-import { aiExtractionSchema, type AiExtraction } from "./validation";
+import { type AiExtraction, aiExtractionSchema } from "./validation";
 
 const responseSchema = {
   type: Type.OBJECT,
@@ -15,7 +15,14 @@ const responseSchema = {
     title: { type: Type.STRING },
     documentType: {
       type: Type.STRING,
-      enum: ["notice", "convocation", "results", "assignment", "planning", "unknown"],
+      enum: [
+        "notice",
+        "convocation",
+        "results",
+        "assignment",
+        "planning",
+        "unknown",
+      ],
     },
     region: { type: Type.STRING, nullable: true },
     center: { type: Type.STRING, nullable: true },
@@ -142,7 +149,7 @@ export async function checkCandidateWithGemini(
   const prompt = [
     "You are checking whether a candidate name appears in a Moroccan Ministry of Health concours PDF.",
     "The PDF may be Arabic, French, scanned, or mixed. Check tables, annexes, lists, and all visible pages.",
-    "Names can have accents, Arabic/French transliteration differences, uppercase/lowercase differences, and spacing differences.",
+    "Names can have accents, Arabic/French transliteration differences, uppercase/lowercase differences, FIRST NAME before SURNAME or vice versa, and spacing differences.",
     "Only mark found=true when the candidate is very likely the same person. If unsure, found=false with evidence explaining the uncertainty.",
     "Return strict JSON only.",
     `Candidate name: ${candidateName}`,

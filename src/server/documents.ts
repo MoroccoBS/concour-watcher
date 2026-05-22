@@ -11,7 +11,10 @@ export async function listDocuments() {
   if (!db) return [];
 
   return db.query.concoursDocuments.findMany({
-    orderBy: [desc(concoursDocuments.examDate), desc(concoursDocuments.discoveredAt)],
+    orderBy: [
+      desc(concoursDocuments.examDate),
+      desc(concoursDocuments.discoveredAt),
+    ],
     with: {
       specialtyRows: true,
     },
@@ -40,9 +43,7 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
 
   const important = inserted.filter((item) => item.isImportant).slice(0, 5);
   for (const item of important) {
-    const result = await sendTelegramMessage(
-      formatDiscoveryMessage(item),
-    );
+    const result = await sendTelegramMessage(formatDiscoveryMessage(item));
     if ("error" in result && result.error) {
       console.warn(result.error);
     }
@@ -81,7 +82,9 @@ function formatDiscoveryMessage(item: typeof concoursDocuments.$inferSelect) {
     `📍 <b>${compactTitle(item.region ?? item.title)}</b>`,
     item.updateLabel ? `📌 ${item.updateLabel}` : null,
     `🕒 Détecté: ${formatDateTime(item.discoveredAt)}`,
-    item.hasAttachment ? `📎 <a href="${item.pdfUrl}">Ouvrir le PDF</a>` : `🔗 <a href="${item.sourcePageUrl}">Page source</a>`,
+    item.hasAttachment
+      ? `📎 <a href="${item.pdfUrl}">Ouvrir le PDF</a>`
+      : `🔗 <a href="${item.sourcePageUrl}">Page source</a>`,
   ].filter(Boolean);
 
   return lines.join("\n");
@@ -149,7 +152,9 @@ export async function replaceSpecialtyRows(
 ) {
   if (!db) return;
 
-  await db.delete(specialtyRows).where(eq(specialtyRows.documentId, documentId));
+  await db
+    .delete(specialtyRows)
+    .where(eq(specialtyRows.documentId, documentId));
 
   if (rows.length > 0) {
     await db.insert(specialtyRows).values(

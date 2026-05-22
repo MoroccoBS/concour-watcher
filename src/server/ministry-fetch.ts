@@ -63,10 +63,7 @@ async function relaxedHttpsFetch(
         const status = res.statusCode ?? 0;
         const location = res.headers.location;
 
-        if (
-          location &&
-          [301, 302, 303, 307, 308].includes(status)
-        ) {
+        if (location && [301, 302, 303, 307, 308].includes(status)) {
           res.resume();
           const nextUrl = new URL(location, url).toString();
           relaxedHttpsFetch(nextUrl, options, redirects + 1)

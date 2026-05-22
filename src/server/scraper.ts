@@ -9,18 +9,21 @@ import {
 import { fetchMinistryResource } from "./ministry-fetch";
 
 export type DiscoveredPdf = {
-	sourcePageUrl: string;
-	pdfUrl: string;
-	listingKey: string;
-	hasAttachment: boolean;
-	updateLabel?: string;
-	title: string;
-	region?: string;
-	isImportant: boolean;
+  sourcePageUrl: string;
+  pdfUrl: string;
+  listingKey: string;
+  hasAttachment: boolean;
+  updateLabel?: string;
+  title: string;
+  region?: string;
+  isImportant: boolean;
 };
 
 function cleanText(value: string) {
-  return value.replace(/\u200b/g, "").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/\u200b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function safeDecode(value: string) {
@@ -62,19 +65,19 @@ function parseConcoursDate(value: string) {
 }
 
 function sameCalendarDay(a: Date, b: Date) {
-	return (
-		a.getFullYear() === b.getFullYear() &&
-		a.getMonth() === b.getMonth() &&
-		a.getDate() === b.getDate()
-	);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 function formatDateKey(date: Date) {
-	return [
-		date.getFullYear(),
-		String(date.getMonth() + 1).padStart(2, "0"),
-		String(date.getDate()).padStart(2, "0"),
-	].join("-");
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function startOfToday() {
@@ -83,10 +86,10 @@ function startOfToday() {
 }
 
 function getTargetConcoursDate(haystack: string) {
-	const normalized = safeDecode(haystack)
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/\p{Diacritic}/gu, "");
+  const normalized = safeDecode(haystack)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 
   const isParamedical =
     normalized.includes("paramedical") ||
@@ -95,7 +98,10 @@ function getTargetConcoursDate(haystack: string) {
     normalized.includes("/paramedical");
   const isTargetFrame = targetFrameKeywords.some((keyword) =>
     normalized.includes(
-      keyword.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, ""),
+      keyword
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, ""),
     ),
   );
   const isNotice =
@@ -113,133 +119,143 @@ function getTargetConcoursDate(haystack: string) {
     "reclamation",
     "réclamation",
   ].some((keyword) => normalized.includes(keyword));
-	const concoursDate = parseConcoursDate(normalized);
+  const concoursDate = parseConcoursDate(normalized);
 
-	if (
-		isParamedical &&
-		isTargetFrame &&
-		concoursDate !== null &&
-		concoursDate >= startOfToday()
-	) {
-		return { concoursDate, isNotice, isFollowUpDocument, normalized };
-	}
+  if (
+    isParamedical &&
+    isTargetFrame &&
+    concoursDate !== null &&
+    concoursDate >= startOfToday()
+  ) {
+    return { concoursDate, isNotice, isFollowUpDocument, normalized };
+  }
 
-	return null;
+  return null;
 }
 
 function classifyUpdateLabel(haystack: string, fallback: string) {
-	const normalized = safeDecode(haystack).toLowerCase();
-	const labels: Array<[string, string]> = [
-		["liste d'attente", "Avis d'affectation liste d'attente"],
-		["affcetation", "Avis d'affectation"],
-		["affectation", "Avis d'affectation"],
-		["liste définitive", "Liste définitive"],
-		["liste definitive", "Liste définitive"],
-		["listdef", "Liste définitive"],
-		["planning", "Planning"],
-		["programme", "Planning"],
-		["postes ouverts", "Postes ouverts"],
-		["prise de service", "Avis de prise de service"],
-		["conv", "Liste des convoqués"],
-		["rslts", "Résultats"],
-		["result", "Résultats"],
-		["avis", "Avis"],
-	];
+  const normalized = safeDecode(haystack).toLowerCase();
+  const labels: Array<[string, string]> = [
+    ["liste d'attente", "Avis d'affectation liste d'attente"],
+    ["affcetation", "Avis d'affectation"],
+    ["affectation", "Avis d'affectation"],
+    ["liste définitive", "Liste définitive"],
+    ["liste definitive", "Liste définitive"],
+    ["listdef", "Liste définitive"],
+    ["planning", "Planning"],
+    ["programme", "Planning"],
+    ["postes ouverts", "Postes ouverts"],
+    ["prise de service", "Avis de prise de service"],
+    ["conv", "Liste des convoqués"],
+    ["rslts", "Résultats"],
+    ["result", "Résultats"],
+    ["avis", "Avis"],
+  ];
 
-	return labels.find(([needle]) => normalized.includes(needle))?.[1] ?? fallback;
+  return (
+    labels.find(([needle]) => normalized.includes(needle))?.[1] ?? fallback
+  );
 }
 
 function buildListingKey(sourcePageUrl: string, date: Date, haystack: string) {
-	const decoded = safeDecode(haystack).toLowerCase();
-	const region =
-		decoded.match(
-			/(errachidia|draa|draâ|tafilalet|oriental|marrakech|laayoune|dakhla|rabat|fes|fès|casablanca|souss|tanger|beni mellal|béni mellal)/,
-		)?.[1] ?? new URL(sourcePageUrl).pathname;
+  const decoded = safeDecode(haystack).toLowerCase();
+  const region =
+    decoded.match(
+      /(errachidia|draa|draâ|tafilalet|oriental|marrakech|laayoune|dakhla|rabat|fes|fès|casablanca|souss|tanger|beni mellal|béni mellal)/,
+    )?.[1] ?? new URL(sourcePageUrl).pathname;
 
-	return `${formatDateKey(date)}:${region
-		.normalize("NFD")
-		.replace(/\p{Diacritic}/gu, "")
-		.replace(/[^a-z0-9]+/g, "-")}`;
+  return `${formatDateKey(date)}:${region
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")}`;
 }
 
 export function parsePdfLinks(html: string, sourcePageUrl: string) {
-	const $ = cheerio.load(html);
-	const links = new Map<string, DiscoveredPdf>();
-	const candidateRows = $("tr")
-		.toArray()
-		.filter((unit) => $(unit).find("tr").length === 0);
+  const $ = cheerio.load(html);
+  const links = new Map<string, DiscoveredPdf>();
+  const candidateRows = $("tr")
+    .toArray()
+    .filter((unit) => $(unit).find("tr").length === 0);
 
-	for (const unit of candidateRows) {
-		const unitText =
-			$(unit)
-				.find("td, th")
-				.toArray()
-				.map((cell) => cleanText($(cell).text()))
-				.filter(Boolean)
-				.join(" ") || cleanText($(unit).text());
-		const anchors = $(unit).find("a[href]").toArray();
-		const hrefs = anchors
-			.map((anchor) => $(anchor).attr("href"))
-			.filter((href): href is string => Boolean(href));
-		const pdfHrefs = hrefs.filter((href) => href.toLowerCase().includes(".pdf"));
-		const haystack = `${unitText} ${hrefs.join(" ")}`;
-		const target = getTargetConcoursDate(haystack);
-		if (!target) {
-			continue;
-		}
+  for (const unit of candidateRows) {
+    const unitText =
+      $(unit)
+        .find("td, th")
+        .toArray()
+        .map((cell) => cleanText($(cell).text()))
+        .filter(Boolean)
+        .join(" ") || cleanText($(unit).text());
+    const anchors = $(unit).find("a[href]").toArray();
+    const hrefs = anchors
+      .map((anchor) => $(anchor).attr("href"))
+      .filter((href): href is string => Boolean(href));
+    const pdfHrefs = hrefs.filter((href) =>
+      href.toLowerCase().includes(".pdf"),
+    );
+    const haystack = `${unitText} ${hrefs.join(" ")}`;
+    const target = getTargetConcoursDate(haystack);
+    if (!target) {
+      continue;
+    }
 
-		const listingKey = buildListingKey(
-			sourcePageUrl,
-			target.concoursDate,
-			haystack,
-		);
+    const listingKey = buildListingKey(
+      sourcePageUrl,
+      target.concoursDate,
+      haystack,
+    );
 
-		if (pdfHrefs.length === 0) {
-			const key = `${sourcePageUrl}#no-attachment-${listingKey}`;
-			links.set(key, {
-				sourcePageUrl,
-				pdfUrl: key,
-				listingKey,
-				hasAttachment: false,
-				updateLabel: "No attachment yet",
-				title: unitText || "New ITS concours without attachment",
-				region: unitText || undefined,
-				isImportant: true,
-			});
-			continue;
-		}
+    if (pdfHrefs.length === 0) {
+      const key = `${sourcePageUrl}#no-attachment-${listingKey}`;
+      links.set(key, {
+        sourcePageUrl,
+        pdfUrl: key,
+        listingKey,
+        hasAttachment: false,
+        updateLabel: "No attachment yet",
+        title: unitText || "New ITS concours without attachment",
+        region: unitText || undefined,
+        isImportant: true,
+      });
+      continue;
+    }
 
-		for (const href of pdfHrefs) {
-			const pdfUrl = absoluteMinistryUrl(href);
-			const pdfDate = parseConcoursDate(pdfUrl);
-			if (pdfDate && !sameCalendarDay(pdfDate, target.concoursDate)) {
-				continue;
-			}
+    for (const href of pdfHrefs) {
+      const pdfUrl = absoluteMinistryUrl(href);
+      const pdfDate = parseConcoursDate(pdfUrl);
+      if (pdfDate && !sameCalendarDay(pdfDate, target.concoursDate)) {
+        continue;
+      }
 
-			const anchor = anchors.find((candidate) => $(candidate).attr("href") === href);
-			const anchorText = anchor ? cleanText($(anchor).text()) : "";
-			const fileTitle =
-				safeDecode(pdfUrl).split("/").pop()?.replace(/\.pdf$/i, "") ||
-				"Concours PDF";
-			const title = anchorText || fileTitle;
-			const linkHaystack = `${title} ${href} ${unitText}`;
-			const updateLabel = classifyUpdateLabel(linkHaystack, title);
+      const anchor = anchors.find(
+        (candidate) => $(candidate).attr("href") === href,
+      );
+      const anchorText = anchor ? cleanText($(anchor).text()) : "";
+      const fileTitle =
+        safeDecode(pdfUrl)
+          .split("/")
+          .pop()
+          ?.replace(/\.pdf$/i, "") || "Concours PDF";
+      const title = anchorText || fileTitle;
+      const linkHaystack = `${title} ${href} ${unitText}`;
+      const updateLabel = classifyUpdateLabel(linkHaystack, title);
 
-			links.set(pdfUrl, {
-				sourcePageUrl,
-				pdfUrl,
-				listingKey,
-				hasAttachment: true,
-				updateLabel,
-				title,
-				region: unitText || title,
-				isImportant:
-					target.isNotice || !target.isFollowUpDocument || classifyImportance(linkHaystack),
-			});
-		}
-	}
+      links.set(pdfUrl, {
+        sourcePageUrl,
+        pdfUrl,
+        listingKey,
+        hasAttachment: true,
+        updateLabel,
+        title,
+        region: unitText || title,
+        isImportant:
+          target.isNotice ||
+          !target.isFollowUpDocument ||
+          classifyImportance(linkHaystack),
+      });
+    }
+  }
 
-	return [...links.values()];
+  return [...links.values()];
 }
 
 export async function discoverSourceLinks(

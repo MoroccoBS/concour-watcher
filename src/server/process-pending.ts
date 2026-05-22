@@ -2,14 +2,11 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { concoursDocuments } from "@/db/schema";
+import { detectSameDayConflicts, replaceSpecialtyRows } from "./documents";
 import { checkCandidateWithGemini, extractConcoursWithGemini } from "./gemini";
-import {
-  detectSameDayConflicts,
-  replaceSpecialtyRows,
-} from "./documents";
+import { fetchMinistryResource } from "./ministry-fetch";
 import { sendTelegramMessage } from "./telegram";
 import { validateExtraction } from "./validation";
-import { fetchMinistryResource } from "./ministry-fetch";
 
 export async function processPendingDocuments(limit = 5) {
   if (!db) throw new Error("DATABASE_URL is not configured.");
@@ -21,7 +18,10 @@ export async function processPendingDocuments(limit = 5) {
 
   const pending = await db.query.concoursDocuments.findMany({
     where: inArray(concoursDocuments.processingStatus, statuses),
-    orderBy: [desc(concoursDocuments.isImportant), asc(concoursDocuments.discoveredAt)],
+    orderBy: [
+      desc(concoursDocuments.isImportant),
+      asc(concoursDocuments.discoveredAt),
+    ],
     limit,
   });
 
@@ -118,18 +118,24 @@ export async function processPendingDocuments(limit = 5) {
 
       await detectSameDayConflicts(document.id);
 
-      if (document.isImportant || validation.isRadiologyRelevant || validation.issues.length) {
-        await sendTelegramMessage(formatProcessedMessage({
-          title: buildDisplayTitle(finalExtraction),
-          pdfUrl: document.pdfUrl,
-          examDate: validation.examDate,
-          deadline: validation.applicationDeadline,
-          totalSeats: finalExtraction.totalSeats ?? null,
-          radiologySeats: validation.radiologySeats,
-          confidence: finalExtraction.confidence,
-          issues: validation.issues,
-          candidateMatched: candidateCheck?.found ?? null,
-        }));
+      if (
+        document.isImportant ||
+        validation.isRadiologyRelevant ||
+        validation.issues.length
+      ) {
+        await sendTelegramMessage(
+          formatProcessedMessage({
+            title: buildDisplayTitle(finalExtraction),
+            pdfUrl: document.pdfUrl,
+            examDate: validation.examDate,
+            deadline: validation.applicationDeadline,
+            totalSeats: finalExtraction.totalSeats ?? null,
+            radiologySeats: validation.radiologySeats,
+            confidence: finalExtraction.confidence,
+            issues: validation.issues,
+            candidateMatched: candidateCheck?.found ?? null,
+          }),
+        );
       }
 
       processed += 1;
@@ -231,7 +237,9 @@ async function runCandidateCheckSafely(input: {
     return await runCandidateCheck(input);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown candidate check failure";
+      error instanceof Error
+        ? error.message
+        : "Unknown candidate check failure";
     await sendTelegramMessage(
       [
         "⚠️ <b>Candidate name check failed</b>",
@@ -251,7 +259,9 @@ function buildDisplayTitle(extraction: {
 }) {
   const parts = [
     extraction.region?.replace(/^direction régionale\s*/i, "").trim(),
-    typeof extraction.totalSeats === "number" ? `${extraction.totalSeats} postes` : null,
+    typeof extraction.totalSeats === "number"
+      ? `${extraction.totalSeats} postes`
+      : null,
     typeof extraction.radiologySeats === "number"
       ? `${extraction.radiologySeats} radiologie`
       : null,
@@ -281,7 +291,9 @@ function formatProcessedMessage(input: {
   candidateMatched: boolean | null;
 }) {
   return [
-    input.issues.length ? "⚠️ <b>Concours ITS à vérifier</b>" : "✅ <b>Concours ITS analysé</b>",
+    input.issues.length
+      ? "⚠️ <b>Concours ITS à vérifier</b>"
+      : "✅ <b>Concours ITS analysé</b>",
     `📍 <b>${input.title}</b>`,
     `🗓️ Examen: ${shortDate(input.examDate)}`,
     `⏳ Deadline: ${shortDate(input.deadline)}`,
@@ -293,5 +305,7 @@ function formatProcessedMessage(input: {
     `🤖 Confiance: ${input.confidence}%`,
     input.issues.length ? `⚠️ ${input.issues.join(" ")}` : null,
     `📎 <a href="${input.pdfUrl}">Ouvrir le PDF</a>`,
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

@@ -5,14 +5,24 @@ import { radiologyKeywords } from "./sources";
 export const specialtyRowSchema = z.object({
   frame: z.string().nullable().optional(),
   specialty: z.string().min(1),
-  seats: z.number().nonnegative().transform((value) => Math.round(value)),
+  seats: z
+    .number()
+    .nonnegative()
+    .transform((value) => Math.round(value)),
   isRadiology: z.boolean().default(false),
 });
 
 export const aiExtractionSchema = z.object({
   title: z.string().min(1),
   documentType: z
-    .enum(["notice", "convocation", "results", "assignment", "planning", "unknown"])
+    .enum([
+      "notice",
+      "convocation",
+      "results",
+      "assignment",
+      "planning",
+      "unknown",
+    ])
     .default("unknown"),
   region: z.string().nullable().optional(),
   center: z.string().nullable().optional(),

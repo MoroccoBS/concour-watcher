@@ -24,18 +24,16 @@ async function run(env: Env) {
   });
 
   if (!response.ok) {
-    throw new Error(`Ingest failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `Ingest failed: ${response.status} ${await response.text()}`,
+    );
   }
 
   return response.json();
 }
 
 const worker = {
-  async scheduled(
-    _controller: unknown,
-    env: Env,
-    ctx: unknown,
-  ) {
+  async scheduled(_controller: unknown, env: Env, ctx: unknown) {
     void ctx;
     await run(env);
   },
