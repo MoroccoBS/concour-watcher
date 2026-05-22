@@ -7,6 +7,7 @@ import {
 	ExternalLink,
 	Filter,
 	KeyRound,
+	ChevronDown,
 	MapPin,
 	PencilLine,
 	RadioTower,
@@ -46,6 +47,9 @@ export function TrackerShell() {
 	const clearAdminToken = useAdminStore((state) => state.clearAdminToken);
 	const [draftToken, setDraftToken] = useState("");
 	const [editing, setEditing] = useState<string | null>(null);
+	const [expandedSpecialties, setExpandedSpecialties] = useState<
+		Record<string, boolean>
+	>({});
 	const [draft, setDraft] = useState<{
 		applicationStatus: ApplicationStatus;
 		adminNotes: string;
@@ -87,6 +91,22 @@ export function TrackerShell() {
 			applicationStatus: item.applicationStatus,
 			adminNotes: item.adminNotes,
 		});
+	}
+
+	function displayTitle(item: DocumentItem) {
+		const region = item.region
+			?.replace(/concours de recrutement de/gi, "")
+			.replace(/infirmiers? et techniciens? de santé/gi, "ITS")
+			.replace(/direction régionale/gi, "")
+			.replace(/\s+/g, " ")
+			.trim();
+		const parts = [
+			region || item.title,
+			item.totalSeats ? `${item.totalSeats} postes` : null,
+			item.radiologySeats ? `${item.radiologySeats} radiologie` : null,
+		].filter(Boolean);
+
+		return parts.join(" · ");
 	}
 
 	return (
@@ -184,6 +204,16 @@ export function TrackerShell() {
 									<Badge className={processingTone(item.processingStatus)}>
 										{item.processingStatus.replace("_", " ")}
 									</Badge>
+									{item.updateLabel ? (
+										<Badge className="border-sky-200 bg-sky-100 text-sky-950">
+											{item.updateLabel}
+										</Badge>
+									) : null}
+									{!item.hasAttachment ? (
+										<Badge className="border-orange-200 bg-orange-100 text-orange-900">
+											no attachment yet
+										</Badge>
+									) : null}
 									{item.isRadiologyRelevant ? (
 										<Badge className="border-emerald-200 bg-emerald-100 text-emerald-900">
 											radiology
@@ -196,7 +226,7 @@ export function TrackerShell() {
 									) : null}
 								</div>
 								<h2 className="font-serif text-2xl leading-snug">
-									{item.title}
+									{displayTitle(item)}
 								</h2>
 								<div className="mt-4 grid gap-3 text-sm text-stone-700 sm:grid-cols-2 lg:grid-cols-4">
 									<Info
@@ -222,37 +252,64 @@ export function TrackerShell() {
 								</div>
 
 								{item.specialtyRows.length ? (
-									<div className="mt-5 overflow-hidden rounded-md border border-stone-300">
-										<table className="w-full border-collapse bg-white/70 text-sm">
-											<thead className="bg-stone-100 text-left">
-												<tr>
-													<th className="px-3 py-2 font-medium">Specialty</th>
-													<th className="px-3 py-2 font-medium">Frame</th>
-													<th className="px-3 py-2 text-right font-medium">
-														Seats
-													</th>
-												</tr>
-											</thead>
-											<tbody>
-												{item.specialtyRows.map((row) => (
-													<tr
-														key={row.id}
-														className={cn(
-															"border-t border-stone-200",
-															row.isRadiology && "bg-emerald-50",
-														)}
-													>
-														<td className="px-3 py-2">{row.specialty}</td>
-														<td className="px-3 py-2 text-stone-600">
-															{row.frame ?? "-"}
-														</td>
-														<td className="px-3 py-2 text-right">
-															{row.seats}
-														</td>
+									<div className="mt-5 overflow-hidden rounded-md border border-stone-300 bg-white/60">
+										<button
+											type="button"
+											className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm font-medium"
+											onClick={() =>
+												setExpandedSpecialties((current) => ({
+													...current,
+													[item.id]: !current[item.id],
+												}))
+											}
+										>
+											<span>
+												Specialties ({item.specialtyRows.length}) ·{" "}
+												{item.specialtyRows.reduce(
+													(sum, row) => sum + row.seats,
+													0,
+												)}{" "}
+												seats
+											</span>
+											<ChevronDown
+												className={cn(
+													"h-4 w-4 shrink-0 transition-transform",
+													expandedSpecialties[item.id] && "rotate-180",
+												)}
+											/>
+										</button>
+										{expandedSpecialties[item.id] ? (
+											<table className="w-full border-collapse bg-white/70 text-sm">
+												<thead className="bg-stone-100 text-left">
+													<tr>
+														<th className="px-3 py-2 font-medium">Specialty</th>
+														<th className="px-3 py-2 font-medium">Frame</th>
+														<th className="px-3 py-2 text-right font-medium">
+															Seats
+														</th>
 													</tr>
-												))}
-											</tbody>
-										</table>
+												</thead>
+												<tbody>
+													{item.specialtyRows.map((row) => (
+														<tr
+															key={row.id}
+															className={cn(
+																"border-t border-stone-200",
+																row.isRadiology && "bg-emerald-50",
+															)}
+														>
+															<td className="px-3 py-2">{row.specialty}</td>
+															<td className="px-3 py-2 text-stone-600">
+																{row.frame ?? "-"}
+															</td>
+															<td className="px-3 py-2 text-right">
+																{row.seats}
+															</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
+										) : null}
 									</div>
 								) : null}
 
@@ -265,9 +322,13 @@ export function TrackerShell() {
 
 							<div className="flex w-full flex-col gap-3 lg:w-72">
 								<Button asChild variant="outline">
-									<a href={item.pdfUrl} target="_blank" rel="noreferrer">
+									<a
+										href={item.hasAttachment ? item.pdfUrl : item.sourcePageUrl}
+										target="_blank"
+										rel="noreferrer"
+									>
 										<ExternalLink className="h-4 w-4" />
-										Open PDF
+										{item.hasAttachment ? "Open PDF" : "Open source page"}
 									</a>
 								</Button>
 								{adminToken ? (

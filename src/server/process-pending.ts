@@ -34,6 +34,18 @@ export async function processPendingDocuments(limit = 5) {
       .where(eq(concoursDocuments.id, document.id));
 
     try {
+      if (!document.hasAttachment) {
+        await db
+          .update(concoursDocuments)
+          .set({
+            processingStatus: "needs_review",
+            validationIssues: ["No attachment is available yet."],
+            updatedAt: new Date(),
+          })
+          .where(eq(concoursDocuments.id, document.id));
+        continue;
+      }
+
       const response = await fetchMinistryResource(document.pdfUrl);
       if (!response.ok) {
         throw new Error(`PDF download failed: ${response.status}`);
@@ -61,7 +73,7 @@ export async function processPendingDocuments(limit = 5) {
       await db
         .update(concoursDocuments)
         .set({
-          title: finalExtraction.title,
+          title: buildDisplayTitle(finalExtraction),
           documentType: finalExtraction.documentType,
           region: finalExtraction.region,
           center: finalExtraction.center,
@@ -94,20 +106,17 @@ export async function processPendingDocuments(limit = 5) {
 
       await detectSameDayConflicts(document.id);
 
-      if (validation.isRadiologyRelevant || validation.issues.length) {
-        await sendTelegramMessage(
-          [
-            validation.issues.length
-              ? "<b>Concours needs review</b>"
-              : "<b>Radiology concours detected</b>",
-            finalExtraction.title,
-            `Exam: ${finalExtraction.examDate ?? "unknown"}`,
-            `Deadline: ${finalExtraction.applicationDeadline ?? "unknown"}`,
-            `Radiology seats: ${validation.radiologySeats ?? "unknown"}`,
-            `Confidence: ${finalExtraction.confidence}%`,
-            document.pdfUrl,
-          ].join("\n"),
-        );
+      if (document.isImportant || validation.isRadiologyRelevant || validation.issues.length) {
+        await sendTelegramMessage(formatProcessedMessage({
+          title: buildDisplayTitle(finalExtraction),
+          pdfUrl: document.pdfUrl,
+          examDate: validation.examDate,
+          deadline: validation.applicationDeadline,
+          totalSeats: finalExtraction.totalSeats ?? null,
+          radiologySeats: validation.radiologySeats,
+          confidence: finalExtraction.confidence,
+          issues: validation.issues,
+        }));
       }
 
       processed += 1;
@@ -133,4 +142,52 @@ export async function processPendingDocuments(limit = 5) {
   }
 
   return { processed, found: pending.length };
+}
+
+function buildDisplayTitle(extraction: {
+  region?: string | null;
+  totalSeats?: number | null;
+  radiologySeats?: number | null;
+}) {
+  const parts = [
+    extraction.region?.replace(/^direction régionale\s*/i, "").trim(),
+    typeof extraction.totalSeats === "number" ? `${extraction.totalSeats} postes` : null,
+    typeof extraction.radiologySeats === "number"
+      ? `${extraction.radiologySeats} radiologie`
+      : null,
+  ].filter(Boolean);
+
+  return parts.join(" · ") || "Concours ITS";
+}
+
+function shortDate(value: Date | null) {
+  if (!value) return "Inconnu";
+  return new Intl.DateTimeFormat("fr-MA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Africa/Casablanca",
+  }).format(value);
+}
+
+function formatProcessedMessage(input: {
+  title: string;
+  pdfUrl: string;
+  examDate: Date | null;
+  deadline: Date | null;
+  totalSeats: number | null;
+  radiologySeats: number | null;
+  confidence: number;
+  issues: string[];
+}) {
+  return [
+    input.issues.length ? "⚠️ <b>Concours ITS à vérifier</b>" : "✅ <b>Concours ITS analysé</b>",
+    `📍 <b>${input.title}</b>`,
+    `🗓️ Examen: ${shortDate(input.examDate)}`,
+    `⏳ Deadline: ${shortDate(input.deadline)}`,
+    `💺 Total: ${input.totalSeats ?? "?"}`,
+    `🩻 Radiologie: ${input.radiologySeats ?? "?"}`,
+    `🤖 Confiance: ${input.confidence}%`,
+    input.issues.length ? `⚠️ ${input.issues.join(" ")}` : null,
+    `📎 <a href="${input.pdfUrl}">Ouvrir le PDF</a>`,
+  ].filter(Boolean).join("\n");
 }

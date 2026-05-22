@@ -44,6 +44,9 @@ export const concoursDocuments = pgTable(
 		id: uuid("id").defaultRandom().primaryKey(),
 		sourcePageUrl: text("source_page_url").notNull(),
 		pdfUrl: text("pdf_url").notNull(),
+		listingKey: text("listing_key"),
+		hasAttachment: boolean("has_attachment").notNull().default(true),
+		updateLabel: text("update_label"),
 		title: text("title").notNull(),
 		region: text("region"),
 		documentType: documentTypeEnum("document_type")
@@ -92,6 +95,7 @@ export const concoursDocuments = pgTable(
 		index("concours_documents_status_idx").on(table.applicationStatus),
 		index("concours_documents_processing_idx").on(table.processingStatus),
 		index("concours_documents_radiology_idx").on(table.isRadiologyRelevant),
+		index("concours_documents_listing_key_idx").on(table.listingKey),
 	],
 );
 

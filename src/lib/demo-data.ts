@@ -8,6 +8,9 @@ export const demoDocuments: DocumentWithRows[] = [
     sourcePageUrl: "https://drh.sante.gov.ma/Pages/Concours_Ex_D.aspx",
     pdfUrl:
       "https://drh.sante.gov.ma/Docs_Concours/Param%C3%A9dical/2026/errachidia/CR%2028%2006%202026/Errachidia-avis%20CR-ITS-28%2006%202026.pdf",
+    listingKey: "2026-06-28:errachidia",
+    hasAttachment: true,
+    updateLabel: "Avis",
     title: "Draa-Tafilalet ITS concours notice",
     region: "Draa-Tafilalet",
     documentType: "notice",

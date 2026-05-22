@@ -74,6 +74,26 @@ Optional repository variable:
 
 The workflow in `.github/workflows/process-pdfs.yml` is the primary hosted runner. It runs every 3 hours and can be triggered manually. It discovers new PDF links first, then processes one pending important PDF with Gemini per run.
 
+### Trigger.dev Trial
+
+Trigger.dev is wired as an optional 10-minute runner. Create a Trigger.dev project, then set:
+
+- `TRIGGER_PROJECT_REF` locally and in Trigger.dev
+- `DATABASE_URL`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+- `TRIGGER_PROCESS_LIMIT=1`
+
+Deploy the trial runner:
+
+```bash
+pnpm deploy:trigger
+```
+
+The scheduled task is `concours-watcher-every-10-minutes`. Keep GitHub Actions enabled until Trigger.dev has been reliable for several days.
+
 ## Useful Commands
 
 ```bash

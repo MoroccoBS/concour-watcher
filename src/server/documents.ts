@@ -3,6 +3,7 @@ import { and, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { concoursDocuments, specialtyRows } from "@/db/schema";
 import type { ApplicationStatus } from "@/lib/status";
+import { formatDateTime } from "@/lib/utils";
 import type { DiscoveredPdf } from "./scraper";
 import { sendTelegramMessage } from "./telegram";
 
@@ -26,6 +27,9 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
       items.map((item) => ({
         sourcePageUrl: item.sourcePageUrl,
         pdfUrl: item.pdfUrl,
+        listingKey: item.listingKey,
+        hasAttachment: item.hasAttachment,
+        updateLabel: item.updateLabel,
         title: item.title,
         region: item.region,
         isImportant: item.isImportant,
@@ -37,11 +41,7 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
   const important = inserted.filter((item) => item.isImportant).slice(0, 5);
   for (const item of important) {
     const result = await sendTelegramMessage(
-      [
-        "<b>New paramedical ITS concours PDF found</b>",
-        item.title,
-        item.pdfUrl,
-      ].join("\n"),
+      formatDiscoveryMessage(item),
     );
     if ("error" in result && result.error) {
       console.warn(result.error);
@@ -62,6 +62,29 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
   }
 
   return { inserted: inserted.length };
+}
+
+function compactTitle(value: string) {
+  return value
+    .replace(/concours de recrutement de/gi, "")
+    .replace(/infirmiers? et techniciens? de santé/gi, "ITS")
+    .replace(/direction régionale/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatDiscoveryMessage(item: typeof concoursDocuments.$inferSelect) {
+  const lines = [
+    item.hasAttachment
+      ? "🆕 <b>Nouveau document ITS</b>"
+      : "🆕 <b>Nouveau concours ITS sans pièce jointe</b>",
+    `📍 <b>${compactTitle(item.region ?? item.title)}</b>`,
+    item.updateLabel ? `📌 ${item.updateLabel}` : null,
+    `🕒 Détecté: ${formatDateTime(item.discoveredAt)}`,
+    item.hasAttachment ? `📎 <a href="${item.pdfUrl}">Ouvrir le PDF</a>` : `🔗 <a href="${item.sourcePageUrl}">Page source</a>`,
+  ].filter(Boolean);
+
+  return lines.join("\n");
 }
 
 export async function updateDocumentAdmin(input: {
