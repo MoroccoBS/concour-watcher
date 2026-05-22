@@ -4,24 +4,54 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:3000": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "discover": "tsx -r tsconfig-paths/register scripts/discover-once.ts",
+    "process:pending": "tsx -r tsconfig-paths/register scripts/process-pending.ts",
+    "worker:deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@google/genai": "^2.6.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@tanstack/react-query": "^5.100.11",
+    "@trpc/client": "^11.17.0",
+    "@trpc/react-query": "^11.17.0",
+    "@trpc/server": "^11.17.0",
+    "cheerio": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.2.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "postgres": "^3.4.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "superjson": "^2.2.6",
+    "tailwind-merge": "^3.6.0",
+    "undici": "^8.3.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.15",
+    "@cloudflare/workers-types": "^4.20260522.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5",
+    "wrangler": "^4.94.0"
   }
 }
