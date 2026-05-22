@@ -29,7 +29,10 @@ export async function sendTelegramMessage(
   );
 
   if (!response.ok) {
-    throw new Error(`Telegram send failed: ${response.status}`);
+    return {
+      skipped: false,
+      error: `Telegram send failed: ${response.status} ${await response.text()}`,
+    };
   }
 
   return { skipped: false };

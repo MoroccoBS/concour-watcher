@@ -53,14 +53,21 @@ export function TrackerShell() {
 
 	const filtered = useMemo(() => {
 		return data.filter((item) => {
-			if (filter === "all") return true;
-			if (filter === "review") return item.processingStatus === "needs_review";
-			return item.isRadiologyRelevant;
+      if (filter === "all") return true;
+      if (filter === "review") return item.processingStatus === "needs_review";
+      return (
+        item.isRadiologyRelevant ||
+        (item.isImportant && item.processingStatus !== "processed")
+      );
 		});
 	}, [data, filter]);
 
 	const stats = useMemo(() => {
-		const radiology = data.filter((item) => item.isRadiologyRelevant);
+    const radiology = data.filter(
+      (item) =>
+        item.isRadiologyRelevant ||
+        (item.isImportant && item.processingStatus !== "processed"),
+    );
 		return {
 			total: data.length,
 			radiology: radiology.length,

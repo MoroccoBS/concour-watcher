@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { concoursDocuments } from "@/db/schema";
@@ -10,6 +10,27 @@ import {
 import { sendTelegramMessage } from "./telegram";
 import { validateExtraction } from "./validation";
 
+async function fetchPdf(url: string) {
+  try {
+    return await fetch(url);
+  } catch (error) {
+    if (
+      typeof process !== "undefined" &&
+      (url.startsWith("https://drh.sante.gov.ma") ||
+        url.startsWith("https://auth-drh.sante.gov.ma"))
+    ) {
+      const { Agent } = await import("undici");
+      return fetch(url, {
+        dispatcher: new Agent({
+          connect: { rejectUnauthorized: false },
+        }),
+      } as RequestInit);
+    }
+
+    throw error;
+  }
+}
+
 export async function processPendingDocuments(limit = 5) {
   if (!db) throw new Error("DATABASE_URL is not configured.");
 
@@ -19,7 +40,7 @@ export async function processPendingDocuments(limit = 5) {
       "needs_review",
       "failed",
     ]),
-    orderBy: [asc(concoursDocuments.discoveredAt)],
+    orderBy: [desc(concoursDocuments.isImportant), asc(concoursDocuments.discoveredAt)],
     limit,
   });
 
@@ -32,7 +53,7 @@ export async function processPendingDocuments(limit = 5) {
       .where(eq(concoursDocuments.id, document.id));
 
     try {
-      const response = await fetch(document.pdfUrl);
+      const response = await fetchPdf(document.pdfUrl);
       if (!response.ok) {
         throw new Error(`PDF download failed: ${response.status}`);
       }

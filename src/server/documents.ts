@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 
 import { db } from "@/db";
 import { concoursDocuments, specialtyRows } from "@/db/schema";
@@ -97,8 +97,8 @@ export async function detectSameDayConflicts(documentId: string) {
     .where(
       and(
         ne(concoursDocuments.id, documentId),
-        sql`${concoursDocuments.examDate} >= ${start}`,
-        sql`${concoursDocuments.examDate} <= ${end}`,
+        gte(concoursDocuments.examDate, start),
+        lte(concoursDocuments.examDate, end),
       ),
     );
 
