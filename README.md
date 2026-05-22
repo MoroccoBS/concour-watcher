@@ -57,7 +57,7 @@ Deploy:
 pnpm worker:deploy
 ```
 
-The Worker runs every 30 minutes and triggers the Vercel ingest endpoint. Vercel performs the ministry-page scrape and writes new links to Neon.
+The Worker runs every 30 minutes and triggers the Vercel ingest endpoint when the host can reach the ministry site. The GitHub workflow also runs discovery before AI processing, which is the more reliable hosted path for the ministry site.
 
 ### GitHub Actions
 
@@ -72,7 +72,7 @@ Optional repository variable:
 
 - `GEMINI_MODEL`
 
-The workflow in `.github/workflows/process-pdfs.yml` runs every 3 hours and can be triggered manually.
+The workflow in `.github/workflows/process-pdfs.yml` runs every 3 hours and can be triggered manually. It discovers new PDF links first, then processes pending PDFs with Gemini.
 
 ## Useful Commands
 
