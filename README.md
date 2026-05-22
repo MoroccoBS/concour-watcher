@@ -8,6 +8,7 @@ A hosted concours tracker for Moroccan Ministry of Health recruitment notices, f
 - Stores discoveries in Neon Postgres through Drizzle.
 - Uses Gemini to extract structured data from scanned Arabic/French PDFs.
 - Validates dates, seat counts, radiology rows, and same-day conflicts.
+- Optionally checks list-style PDFs for your candidate name.
 - Sends Telegram alerts for new PDFs and processed radiology matches.
 - Presents a public read-only web UI with protected admin edits.
 
@@ -31,6 +32,7 @@ Copy `.env.example` to `.env.local` for local app development, and set equivalen
 - `GEMINI_API_KEY`: Google Gemini API key.
 - `GEMINI_MODEL`: defaults to `gemini-2.5-flash`.
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`: Telegram alerts.
+- `CANDIDATE_FULL_NAME`: optional name to check in lists, results, assignments, and planning PDFs.
 
 ## Database
 
@@ -84,6 +86,7 @@ Trigger.dev is wired as an optional 10-minute runner. Create a Trigger.dev proje
 - `GEMINI_MODEL`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
+- `CANDIDATE_FULL_NAME` if you want name-check Telegram alerts
 - `TRIGGER_PROCESS_LIMIT=1`
 
 Deploy the trial runner:

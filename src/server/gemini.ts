@@ -108,3 +108,79 @@ export async function extractConcoursWithGemini(
 
   return aiExtractionSchema.parse(JSON.parse(raw));
 }
+
+const candidateCheckSchema = {
+  type: Type.OBJECT,
+  required: ["found", "confidence", "evidence"],
+  properties: {
+    found: { type: Type.BOOLEAN },
+    matchedName: { type: Type.STRING, nullable: true },
+    confidence: { type: Type.NUMBER },
+    evidence: { type: Type.STRING },
+  },
+};
+
+export type CandidateCheck = {
+  found: boolean;
+  matchedName?: string | null;
+  confidence: number;
+  evidence: string;
+};
+
+export async function checkCandidateWithGemini(
+  pdfBytes: ArrayBuffer,
+  pdfUrl: string,
+  candidateName: string,
+): Promise<CandidateCheck> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is required for candidate checks.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  const prompt = [
+    "You are checking whether a candidate name appears in a Moroccan Ministry of Health concours PDF.",
+    "The PDF may be Arabic, French, scanned, or mixed. Check tables, annexes, lists, and all visible pages.",
+    "Names can have accents, Arabic/French transliteration differences, uppercase/lowercase differences, and spacing differences.",
+    "Only mark found=true when the candidate is very likely the same person. If unsure, found=false with evidence explaining the uncertainty.",
+    "Return strict JSON only.",
+    `Candidate name: ${candidateName}`,
+    `PDF URL: ${pdfUrl}`,
+  ].join("\n");
+
+  const bytes = Buffer.from(pdfBytes).toString("base64");
+  const response = await ai.models.generateContent({
+    model,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType: "application/pdf",
+              data: bytes,
+            },
+          },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: candidateCheckSchema,
+      temperature: 0,
+    },
+  });
+
+  const raw = response.text;
+  if (!raw) throw new Error("Gemini returned an empty candidate check.");
+
+  const parsed = JSON.parse(raw) as CandidateCheck;
+  return {
+    found: Boolean(parsed.found),
+    matchedName: parsed.matchedName ?? null,
+    confidence: Math.max(0, Math.min(100, Math.round(parsed.confidence ?? 0))),
+    evidence: parsed.evidence ?? "",
+  };
+}
