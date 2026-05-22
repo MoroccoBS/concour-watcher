@@ -5,7 +5,7 @@ import { radiologyKeywords } from "./sources";
 export const specialtyRowSchema = z.object({
   frame: z.string().nullable().optional(),
   specialty: z.string().min(1),
-  seats: z.number().int().nonnegative(),
+  seats: z.number().nonnegative().transform((value) => Math.round(value)),
   isRadiology: z.boolean().default(false),
 });
 
@@ -18,11 +18,25 @@ export const aiExtractionSchema = z.object({
   center: z.string().nullable().optional(),
   examDate: z.string().nullable().optional(),
   applicationDeadline: z.string().nullable().optional(),
-  totalSeats: z.number().int().nonnegative().nullable().optional(),
-  radiologySeats: z.number().int().nonnegative().nullable().optional(),
+  totalSeats: z
+    .number()
+    .nonnegative()
+    .transform((value) => Math.round(value))
+    .nullable()
+    .optional(),
+  radiologySeats: z
+    .number()
+    .nonnegative()
+    .transform((value) => Math.round(value))
+    .nullable()
+    .optional(),
   formUrl: z.string().nullable().optional(),
   isRadiologyRelevant: z.boolean().default(false),
-  confidence: z.number().int().min(0).max(100),
+  confidence: z
+    .number()
+    .min(0)
+    .max(100)
+    .transform((value) => Math.round(value)),
   sourceNotes: z
     .array(
       z.object({

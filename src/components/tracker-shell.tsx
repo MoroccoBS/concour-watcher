@@ -97,20 +97,20 @@ export function TrackerShell() {
 						<div className="max-w-3xl">
 							<div className="mb-4 flex items-center gap-3 text-sm font-medium text-amber-900">
 								<RadioTower className="h-4 w-4" />
-								Moroccan health concours watcher
+                Moroccan paramedical concours watcher
 							</div>
 							<h1 className="font-serif text-4xl leading-tight text-stone-950 sm:text-6xl">
-								Radiology concours, read carefully and caught early.
+                ITS concours, read carefully and caught early.
 							</h1>
 							<p className="mt-5 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
-								New ministry PDFs are detected fast, checked by Gemini, and
+                New paramedical PDFs are detected fast, checked by Gemini, and
 								organized around deadlines, seats, conflicts, and your own apply
 								decisions.
 							</p>
 						</div>
 						<div className="grid grid-cols-2 gap-3 sm:grid-cols-5 lg:w-[520px]">
 							<Stat label="Tracked" value={stats.total} />
-							<Stat label="Radiology" value={stats.radiology} />
+      <Stat label="ITS focus" value={stats.radiology} />
 							<Stat label="Seats" value={stats.seats} />
 							<Stat label="Review" value={stats.review} />
 							<Stat label="Conflicts" value={stats.conflicts} />
@@ -123,8 +123,8 @@ export function TrackerShell() {
 								variant={filter === "radiology" ? "default" : "outline"}
 								onClick={() => setFilter("radiology")}
 							>
-								<SearchCheck className="h-4 w-4" />
-								Radiology
+                <SearchCheck className="h-4 w-4" />
+                ITS focus
 							</Button>
 							<Button
 								variant={filter === "review" ? "default" : "outline"}

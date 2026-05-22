@@ -6,6 +6,18 @@ export const ministrySources = [
   "https://drh.sante.gov.ma/Pages/ConcoursRegion/La%C3%A2youne-Saguia-al-Hamra.aspx",
 ];
 
+export const targetFrameKeywords = [
+  "infirmier",
+  "infirmiere",
+  "infirmier(e)",
+  "technicien de santé",
+  "technicien de sante",
+  "its",
+  "ممرض",
+  "تقني الصحة",
+  "تقني في الصحة",
+];
+
 export const radiologyKeywords = [
   "radiologie",
   "radiology",
@@ -21,5 +33,7 @@ export const importantLinkKeywords = [
   "avis",
   "cr-its",
   "technicien",
+  "infirmier",
   "تقني",
+  "ممرض",
 ];

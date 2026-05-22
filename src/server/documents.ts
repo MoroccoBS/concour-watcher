@@ -36,23 +36,29 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
 
   const important = inserted.filter((item) => item.isImportant).slice(0, 5);
   for (const item of important) {
-    await sendTelegramMessage(
+    const result = await sendTelegramMessage(
       [
-        "<b>New likely-relevant concours PDF found</b>",
+        "<b>New paramedical ITS concours PDF found</b>",
         item.title,
         item.pdfUrl,
       ].join("\n"),
     );
+    if ("error" in result && result.error) {
+      console.warn(result.error);
+    }
   }
 
   if (inserted.length > important.length) {
-    await sendTelegramMessage(
+    const result = await sendTelegramMessage(
       [
         "<b>Concours discovery summary</b>",
         `${inserted.length} new PDFs inserted.`,
         `${important.length} likely-relevant PDFs alerted individually.`,
       ].join("\n"),
     );
+    if ("error" in result && result.error) {
+      console.warn(result.error);
+    }
   }
 
   return { inserted: inserted.length };
