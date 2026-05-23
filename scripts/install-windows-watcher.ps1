@@ -8,16 +8,11 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $pnpm = (Get-Command pnpm -ErrorAction Stop).Source
 $logDir = Join-Path $repoRoot "logs"
+$launcher = Join-Path $PSScriptRoot "run-watcher-hidden.vbs"
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
-$argument = @(
-  "-NoProfile",
-  "-ExecutionPolicy", "Bypass",
-  "-Command",
-  "Set-Location -LiteralPath '$repoRoot'; New-Item -ItemType Directory -Path '$logDir' -Force | Out-Null; & '$pnpm' watch:once *> '$logDir\watcher.log'"
-) -join " "
-
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argument -WorkingDirectory $repoRoot
+$argument = "//B //Nologo `"$launcher`" `"$pnpm`""
+$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument $argument -WorkingDirectory $repoRoot
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
   -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) `
   -RepetitionDuration (New-TimeSpan -Days 3650)

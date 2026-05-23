@@ -59,6 +59,7 @@ Local `.env` needs:
 - `LOCAL_WATCHER_ID=windows-home`
 - `LOCAL_PROCESS_LIMIT=1`
 - `WATCHER_STALE_MINUTES=45`
+- `TEST_CANDIDATE_PDF` and `TEST_CANDIDATE_FULL_NAME` only when running the optional name-check test
 
 Test one run:
 
@@ -66,13 +67,21 @@ Test one run:
 pnpm watch:once
 ```
 
+Run the safer pre-drop system check:
+
+```bash
+pnpm system:check
+```
+
+This verifies parser behavior for future concours, ignored old concours, update labels such as `Planning` and `Liste définitive`, no-attachment fallback, and heartbeat access. To test Gemini name matching against a real old PDF without writing to the database, set `TEST_CANDIDATE_PDF` to a PDF URL or local file path and `TEST_CANDIDATE_FULL_NAME` to the name to search.
+
 Install the Windows scheduled task:
 
 ```powershell
 .\scripts\install-windows-watcher.ps1
 ```
 
-The task runs every 10 minutes, wakes the computer when Windows allows it, writes logs to `logs/watcher.log`, and stores secrets only in local `.env`. Remove it with:
+The task runs every 10 minutes through a hidden `wscript.exe` launcher, wakes the computer when Windows allows it, writes logs to `logs/watcher.log`, and stores secrets only in local `.env`. Remove it with:
 
 ```powershell
 .\scripts\uninstall-windows-watcher.ps1
@@ -138,6 +147,7 @@ pnpm lint
 pnpm build
 pnpm discover
 pnpm process:pending
+pnpm system:check
 pnpm watch:once
 pnpm exec wrangler deploy --dry-run
 ```
