@@ -16,6 +16,7 @@ import {
   SearchCheck,
   Settings,
   UserRoundSearch,
+  Wifi,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -59,6 +60,7 @@ type ConcoursCase = {
 
 export function TrackerShell() {
   const { data = [], isLoading } = trpc.documents.list.useQuery();
+  const { data: watcherHealth } = trpc.watcher.health.useQuery();
   const utils = trpc.useUtils();
   const updateAdmin = trpc.documents.updateAdmin.useMutation({
     onSuccess: () => utils.documents.list.invalidate(),
@@ -177,6 +179,7 @@ export function TrackerShell() {
               Decision access
             </Button>
           </div>
+          {watcherHealth ? <WatcherHealthBlock health={watcherHealth} /> : null}
         </div>
       </section>
 
@@ -513,6 +516,74 @@ function DecisionChip({ active, label }: { active: boolean; label: string }) {
     >
       {label}
     </span>
+  );
+}
+
+function WatcherHealthBlock({
+  health,
+}: {
+  health: RouterOutput["watcher"]["health"];
+}) {
+  const tone = {
+    healthy: "border-emerald-200 bg-emerald-50 text-emerald-950",
+    stale: "border-orange-200 bg-orange-50 text-orange-950",
+    failing: "border-red-200 bg-red-50 text-red-950",
+    missing: "border-stone-300 bg-white/60 text-stone-800",
+  }[health.status];
+  const icon =
+    health.status === "healthy" ? (
+      <Wifi className="h-4 w-4" />
+    ) : (
+      <AlertTriangle className="h-4 w-4" />
+    );
+  const lastOk = health.heartbeat?.lastOkAt;
+  const lastError = health.heartbeat?.lastError;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-md border px-4 py-3 text-sm lg:flex-row lg:items-center lg:justify-between",
+        tone,
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">{icon}</div>
+        <div>
+          <div className="font-medium">
+            Local Moroccan-IP watcher: {health.status}
+          </div>
+          <div className="mt-1 text-stone-700">
+            Runner {health.runnerId} · last OK {formatDateTime(lastOk)} · stale
+            after {health.staleMinutes} minutes
+          </div>
+          {lastError ? (
+            <div className="mt-1 text-red-900">Last error: {lastError}</div>
+          ) : null}
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+        <MiniMetric label="Found" value={health.heartbeat?.lastFound ?? 0} />
+        <MiniMetric
+          label="Inserted"
+          value={health.heartbeat?.lastInserted ?? 0}
+        />
+        <MiniMetric
+          label="Processed"
+          value={health.heartbeat?.lastProcessed ?? 0}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded border border-black/10 bg-white/50 px-2 py-1">
+      <div className="font-semibold">{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-stone-500">
+        {label}
+      </div>
+    </div>
   );
 }
 

@@ -2,9 +2,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { z } from "zod";
 
-import { applicationStatuses } from "@/lib/status";
 import { demoDocuments } from "@/lib/demo-data";
+import { applicationStatuses } from "@/lib/status";
 import { listDocuments, updateDocumentAdmin } from "./documents";
+import { getWatcherHealth } from "./runner-heartbeat";
 
 export async function createContext(request: Request) {
   return {
@@ -48,6 +49,9 @@ export const appRouter = t.router({
         }),
       )
       .mutation(({ input }) => updateDocumentAdmin(input)),
+  }),
+  watcher: t.router({
+    health: t.procedure.query(() => getWatcherHealth()),
   }),
 });
 

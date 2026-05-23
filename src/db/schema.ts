@@ -137,6 +137,22 @@ export const documentEvents = pgTable("document_events", {
     .default(sql`now()`),
 });
 
+export const runnerHeartbeats = pgTable("runner_heartbeats", {
+  runnerId: text("runner_id").primaryKey(),
+  lastStartedAt: timestamp("last_started_at", { withTimezone: true }),
+  lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+  lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  lastFound: integer("last_found"),
+  lastInserted: integer("last_inserted"),
+  lastProcessed: integer("last_processed"),
+  lastStaleAlertAt: timestamp("last_stale_alert_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 export const concoursDocumentsRelations = relations(
   concoursDocuments,
   ({ many }) => ({
@@ -161,3 +177,4 @@ export const documentEventsRelations = relations(documentEvents, ({ one }) => ({
 
 export type ConcoursDocument = typeof concoursDocuments.$inferSelect;
 export type SpecialtyRow = typeof specialtyRows.$inferSelect;
+export type RunnerHeartbeat = typeof runnerHeartbeats.$inferSelect;

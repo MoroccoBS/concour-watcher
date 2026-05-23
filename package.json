@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "discover": "tsx -r tsconfig-paths/register scripts/discover-once.ts",
     "process:pending": "tsx -r tsconfig-paths/register scripts/process-pending.ts",
+    "watch:once": "tsx -r tsconfig-paths/register scripts/watch-once.ts",
     "worker:deploy": "wrangler deploy"
   },
   "dependencies": {

@@ -44,6 +44,42 @@ pnpm db:migrate
 
 The initial SQL migration is in `drizzle/0000_initial.sql`.
 
+## Local Moroccan-IP Watcher
+
+The ministry site can block requests from IPs outside Morocco, so the primary watcher is a tiny Windows scheduled one-shot that runs from your Moroccan connection. It starts, checks the ministry, processes pending PDFs, updates Neon, sends Telegram alerts, records a heartbeat, and exits.
+
+Local `.env` needs:
+
+- `DATABASE_URL`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+- `CANDIDATE_FULL_NAME` if you want name-check Telegram alerts
+- `LOCAL_WATCHER_ID=windows-home`
+- `LOCAL_PROCESS_LIMIT=1`
+- `WATCHER_STALE_MINUTES=45`
+
+Test one run:
+
+```bash
+pnpm watch:once
+```
+
+Install the Windows scheduled task:
+
+```powershell
+.\scripts\install-windows-watcher.ps1
+```
+
+The task runs every 10 minutes, wakes the computer when Windows allows it, writes logs to `logs/watcher.log`, and stores secrets only in local `.env`. Remove it with:
+
+```powershell
+.\scripts\uninstall-windows-watcher.ps1
+```
+
+If the PC is fully shut down, scraping pauses. The UI shows watcher health, and the hosted stale monitor can send Telegram after 45 minutes without a successful local run.
+
 ## Hosted Jobs
 
 ### Cloudflare Worker
@@ -59,7 +95,7 @@ Deploy:
 pnpm worker:deploy
 ```
 
-The Worker runs every 30 minutes and can trigger the Vercel ingest endpoint, but it is not the primary scraper because the ministry site is unreliable from Cloudflare/Vercel egress. `GET /` on the Worker is a health check; `POST /` attempts the optional trigger.
+The Worker is no longer trusted for production scraping because the ministry site can block non-Moroccan egress. `GET /` on the Worker is still a health check; `POST /` remains an optional legacy trigger.
 
 ### GitHub Actions
 
@@ -74,28 +110,26 @@ Optional repository variable:
 
 - `GEMINI_MODEL`
 
-The workflow in `.github/workflows/process-pdfs.yml` is the primary hosted runner. It runs every 3 hours and can be triggered manually. It discovers new PDF links first, then processes one pending important PDF with Gemini per run.
+The workflow in `.github/workflows/process-pdfs.yml` is manual-only now. It is useful for diagnostics, but it is not production coverage because GitHub-hosted runners may not have Moroccan egress.
 
-### Trigger.dev Trial
+### Trigger.dev Stale Monitor
 
-Trigger.dev is wired as an optional 10-minute runner. Create a Trigger.dev project, then set:
+Trigger.dev no longer scrapes the ministry. It checks the local watcher heartbeat every 30 minutes and sends Telegram if the Windows runner becomes stale. Set:
 
 - `TRIGGER_PROJECT_REF` locally and in Trigger.dev
 - `DATABASE_URL`
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `CANDIDATE_FULL_NAME` if you want name-check Telegram alerts
-- `TRIGGER_PROCESS_LIMIT=1`
+- `WATCHER_STALE_MINUTES=45`
+- `LOCAL_WATCHER_ID=windows-home`
 
-Deploy the trial runner:
+Deploy the monitor:
 
 ```bash
 pnpm deploy:trigger
 ```
 
-The scheduled task is `concours-watcher-every-10-minutes`. Keep GitHub Actions enabled until Trigger.dev has been reliable for several days.
+The scheduled task is `concours-watcher-stale-monitor`.
 
 ## Useful Commands
 
@@ -104,5 +138,6 @@ pnpm lint
 pnpm build
 pnpm discover
 pnpm process:pending
+pnpm watch:once
 pnpm exec wrangler deploy --dry-run
 ```
