@@ -1,12 +1,12 @@
 import * as cheerio from "cheerio";
 
 import { absoluteMinistryUrl } from "@/lib/utils";
+import { fetchMinistryResource } from "./ministry-fetch";
 import {
   importantLinkKeywords,
   ministrySources,
   targetFrameKeywords,
 } from "./sources";
-import { fetchMinistryResource } from "./ministry-fetch";
 
 export type DiscoveredPdf = {
   sourcePageUrl: string;
@@ -136,6 +136,9 @@ function getTargetConcoursDate(haystack: string) {
 function classifyUpdateLabel(haystack: string, fallback: string) {
   const normalized = safeDecode(haystack).toLowerCase();
   const labels: Array<[string, string]> = [
+    ["rslts def", "Résultats définitifs"],
+    ["rslts", "Résultats"],
+    ["result", "Résultats"],
     ["liste d'attente", "Avis d'affectation liste d'attente"],
     ["affcetation", "Avis d'affectation"],
     ["affectation", "Avis d'affectation"],
@@ -147,8 +150,6 @@ function classifyUpdateLabel(haystack: string, fallback: string) {
     ["postes ouverts", "Postes ouverts"],
     ["prise de service", "Avis de prise de service"],
     ["conv", "Liste des convoqués"],
-    ["rslts", "Résultats"],
-    ["result", "Résultats"],
     ["avis", "Avis"],
   ];
 
@@ -161,7 +162,7 @@ function buildListingKey(sourcePageUrl: string, date: Date, haystack: string) {
   const decoded = safeDecode(haystack).toLowerCase();
   const region =
     decoded.match(
-      /(errachidia|draa|draâ|tafilalet|oriental|marrakech|laayoune|dakhla|rabat|fes|fès|casablanca|souss|tanger|beni mellal|béni mellal)/,
+      /(errachidia|draa|draâ|tafilalet|oriental|marrakech|laayoune|dakhla|rabat|fes|fès|casablanca|souss|tanger|beni mellal|béni mellal|central)/,
     )?.[1] ?? new URL(sourcePageUrl).pathname;
 
   return `${formatDateKey(date)}:${region

@@ -184,10 +184,15 @@ export async function checkCandidateWithGemini(
   if (!raw) throw new Error("Gemini returned an empty candidate check.");
 
   const parsed = JSON.parse(raw) as CandidateCheck;
+  const rawConfidence = Number(parsed.confidence ?? 0);
+  const confidence =
+    rawConfidence > 0 && rawConfidence <= 1
+      ? rawConfidence * 100
+      : rawConfidence;
   return {
     found: Boolean(parsed.found),
     matchedName: parsed.matchedName ?? null,
-    confidence: Math.max(0, Math.min(100, Math.round(parsed.confidence ?? 0))),
+    confidence: Math.max(0, Math.min(100, Math.round(confidence))),
     evidence: parsed.evidence ?? "",
   };
 }

@@ -168,16 +168,23 @@ function shouldCheckCandidate(
   updateLabel?: string | null,
 ) {
   const label = updateLabel?.toLowerCase() ?? "";
+  if (
+    label.includes("liste définitive") ||
+    label.includes("liste definitive")
+  ) {
+    return false;
+  }
+
   return (
-    documentType !== "notice" ||
+    documentType === "results" ||
+    documentType === "assignment" ||
     [
-      "liste",
-      "result",
       "résultat",
-      "convo",
+      "result",
+      "rslts",
       "affectation",
-      "planning",
       "prise de service",
+      "liste d'attente",
     ].some((keyword) => label.includes(keyword))
   );
 }

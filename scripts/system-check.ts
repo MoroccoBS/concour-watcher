@@ -64,6 +64,10 @@ function syntheticMinistryHtml() {
       </tr>
       <tr>
         <td>Concours Paramédical Infirmier(e) et Technicien de Santé Errachidia ${dateText}</td>
+        <td><a href="/Docs_Concours/Param%C3%A9dical/${yyyy}/central/CR-${compactDate}/rslts/rslts%20def-ITS-${compactDate}.pdf"><img src="/PublishingImages/pdf_jpeg.jpg" alt="" /></a></td>
+      </tr>
+      <tr>
+        <td>Concours Paramédical Infirmier(e) et Technicien de Santé Errachidia ${dateText}</td>
         <td>Pièce jointe pas encore publiée</td>
       </tr>
       <tr>
@@ -82,7 +86,7 @@ async function runParserChecks() {
   const labels = links.map((item) => item.updateLabel).sort();
   const listingKeys = new Set(links.map((item) => item.listingKey));
 
-  assertCheck("synthetic current/update discovery count", links.length === 4, {
+  assertCheck("synthetic current/update discovery count", links.length === 5, {
     links,
   });
   assertCheck(
@@ -99,6 +103,13 @@ async function runParserChecks() {
   assertCheck(
     "liste definitive detected",
     labels.includes("Liste définitive"),
+    {
+      labels,
+    },
+  );
+  assertCheck(
+    "icon-only accepted results detected",
+    labels.includes("Résultats définitifs"),
     {
       labels,
     },
