@@ -9,7 +9,7 @@ import {
   FolderMinus,
   Send,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -345,15 +345,18 @@ export function DossierAnnotationsNotepad({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
+  const lastSentNotesRef = useRef<string>(adminNotes);
 
   useEffect(() => {
     setLocalNotes(adminNotes);
+    lastSentNotesRef.current = adminNotes;
   }, [adminNotes]);
 
   function handleNotesBlur() {
-    if (onNotesChange && localNotes !== adminNotes) {
+    if (onNotesChange && localNotes !== lastSentNotesRef.current) {
       setSaveStatus("saving");
       onNotesChange(localNotes);
+      lastSentNotesRef.current = localNotes;
       setTimeout(() => setSaveStatus("saved"), 600);
       setTimeout(() => setSaveStatus("idle"), 2000);
     }
@@ -366,6 +369,7 @@ export function DossierAnnotationsNotepad({
     if (onNotesChange) {
       setSaveStatus("saving");
       onNotesChange(updated);
+      lastSentNotesRef.current = updated;
       setTimeout(() => setSaveStatus("saved"), 600);
       setTimeout(() => setSaveStatus("idle"), 2000);
     }
