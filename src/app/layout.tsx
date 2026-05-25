@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Geist_Mono, Inter } from "next/font/google";
+import { Cormorant_Garamond, Geist_Mono, Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { TrpcProvider } from "@/trpc/client";
+import { cn } from "@/lib/utils";
+
+const manropeHeading = Manrope({subsets:['latin'],variable:'--font-heading'});
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${cormorant.variable} ${geistMono.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", inter.variable, cormorant.variable, geistMono.variable, manropeHeading.variable)}
     >
       <body className="min-h-full flex flex-col">
         <TrpcProvider>{children}</TrpcProvider>

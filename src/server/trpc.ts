@@ -27,6 +27,7 @@ const adminProcedure = t.procedure.use(({ ctx, next }) => {
     });
   }
 
+  console.log("Admin token received:", ctx.adminToken);
   if (ctx.adminToken !== process.env.ADMIN_TOKEN) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }

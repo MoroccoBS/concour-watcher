@@ -13,12 +13,12 @@ export type ApplicationStatus = (typeof applicationStatuses)[number];
 
 export function statusLabel(status: ApplicationStatus) {
   return {
-    new: "New",
+    new: "Not Applied",
     maybe: "Maybe",
-    apply: "Apply",
+    apply: "Wait / Prep",
     applied: "Applied",
-    skip: "Skip",
-    closed: "Closed",
+    skip: "Skipped",
+    closed: "Archived",
   }[status];
 }
 
