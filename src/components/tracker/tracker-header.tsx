@@ -9,8 +9,9 @@ import {
   SearchCheck,
   ServerCog,
 } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
-
+import Logo from "@/app/apple-icon.png";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,9 +59,18 @@ export function TrackerHeader({
               <RadioTower data-icon="inline-start" />
               Moroccan Ministry of Health Opportunity Compass
             </div>
-            <h1 className="mt-1 font-serif text-3xl font-semibold leading-none tracking-tight text-stone-900 sm:text-4xl">
-              Clinical Opportunities Portal
-            </h1>
+            <div className="flex items-center gap-2">
+              <Image
+                className="rounded-full size-14"
+                src={Logo}
+                alt="Logo"
+                width={128}
+                height={128}
+              />
+              <h1 className="mt-1 font-serif text-3xl font-semibold leading-none tracking-tight text-stone-900 sm:text-4xl">
+                Clinical Opportunities Portal
+              </h1>
+            </div>
             <p className="mt-2 max-w-2xl font-sans text-xs leading-relaxed text-stone-500">
               A locally verified directory for Moroccan Ministry of Health ITS
               recruitment notices, focused on radiology openings.
