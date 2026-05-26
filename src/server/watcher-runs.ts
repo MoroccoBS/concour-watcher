@@ -38,6 +38,10 @@ export async function finishWatcherRun(input: FinishInput) {
   const existing = await db.query.watcherRuns.findFirst({
     where: eq(watcherRuns.id, input.id),
   });
+
+  if (!existing) {
+    return null;
+  }
   const durationMs = existing
     ? finishedAt.getTime() - existing.startedAt.getTime()
     : null;
@@ -57,7 +61,7 @@ export async function finishWatcherRun(input: FinishInput) {
     .where(eq(watcherRuns.id, input.id))
     .returning();
 
-  return run;
+  return run ?? null;
 }
 
 export async function listWatcherRuns(limit = 12) {
