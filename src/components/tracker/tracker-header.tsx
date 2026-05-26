@@ -235,7 +235,7 @@ function WatcherDialog({
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 {label}
               </span>
-              <span className="min-w-0 break-words font-medium text-stone-800">
+              <span className="min-w-0 wrap-break-word font-medium text-stone-800 first-letter:uppercase">
                 {value}
               </span>
             </div>

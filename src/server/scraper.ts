@@ -7,6 +7,7 @@ import {
   ministrySources,
   targetFrameKeywords,
 } from "./sources";
+import { watcherLog } from "./watcher-log";
 
 export type DiscoveredPdf = {
   sourcePageUrl: string;
@@ -256,7 +257,17 @@ export function parsePdfLinks(html: string, sourcePageUrl: string) {
     }
   }
 
-  return [...links.values()];
+  const results = [...links.values()];
+  watcherLog("scraper.parse.done", {
+    sourcePageUrl,
+    candidateRows: candidateRows.length,
+    matchedDocuments: results.length,
+    important: results.filter((item) => item.isImportant).length,
+    noAttachment: results.filter((item) => !item.hasAttachment).length,
+    labels: [...new Set(results.map((item) => item.updateLabel ?? "unknown"))],
+  });
+
+  return results;
 }
 
 export async function discoverSourceLinks(
@@ -266,17 +277,48 @@ export async function discoverSourceLinks(
   const results: DiscoveredPdf[] = [];
 
   for (const sourcePageUrl of sources) {
+    watcherLog("scraper.source.fetch.start", { sourcePageUrl });
     const response =
       fetcher === fetch
         ? await fetchMinistryResource(sourcePageUrl)
         : await fetcher(sourcePageUrl);
 
+    watcherLog("scraper.source.fetch.done", {
+      sourcePageUrl,
+      status: response.status,
+      ok: response.ok,
+    });
+
     if (!response.ok) {
       throw new Error(`Failed to fetch ${sourcePageUrl}: ${response.status}`);
     }
 
-    results.push(...parsePdfLinks(await response.text(), sourcePageUrl));
+    const html = await response.text();
+    watcherLog("scraper.source.html", {
+      sourcePageUrl,
+      bytes: html.length,
+    });
+
+    const parsed = parsePdfLinks(html, sourcePageUrl);
+    watcherLog("scraper.source.documents", {
+      sourcePageUrl,
+      count: parsed.length,
+      documents: parsed.map((item) => ({
+        title: item.title,
+        updateLabel: item.updateLabel,
+        hasAttachment: item.hasAttachment,
+        isImportant: item.isImportant,
+        pdfUrl: item.pdfUrl,
+      })),
+    });
+
+    results.push(...parsed);
   }
+
+  watcherLog("scraper.discover.done", {
+    sources: sources.length,
+    found: results.length,
+  });
 
   return results;
 }

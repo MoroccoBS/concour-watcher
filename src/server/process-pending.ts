@@ -1,33 +1,82 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
-import { concoursDocuments } from "@/db/schema";
+import { type ConcoursDocument, concoursDocuments } from "@/db/schema";
 import { detectSameDayConflicts, replaceSpecialtyRows } from "./documents";
 import { checkCandidateWithGemini, extractConcoursWithGemini } from "./gemini";
 import { fetchMinistryResource } from "./ministry-fetch";
 import { sendTelegramMessage } from "./telegram";
 import { validateExtraction } from "./validation";
+import { watcherLog, watcherWarn } from "./watcher-log";
 
-export async function processPendingDocuments(limit = 5) {
+export async function processPendingDocuments(
+  limit = 5,
+  options: { priorityIds?: string[] } = {},
+) {
   if (!db) throw new Error("DATABASE_URL is not configured.");
 
-  const statuses: Array<"pending" | "failed"> = ["pending"];
+  const statuses: Array<ConcoursDocument["processingStatus"]> = ["pending"];
   if (process.env.PROCESS_RETRY_FAILED === "true") {
     statuses.push("failed");
   }
 
-  const pending = await db.query.concoursDocuments.findMany({
-    where: inArray(concoursDocuments.processingStatus, statuses),
-    orderBy: [
-      desc(concoursDocuments.isImportant),
-      asc(concoursDocuments.discoveredAt),
-    ],
+  const priorityIds = [...new Set(options.priorityIds ?? [])];
+  const priorityPending = priorityIds.length
+    ? await db.query.concoursDocuments.findMany({
+        where: inArray(concoursDocuments.id, priorityIds),
+      })
+    : [];
+  const eligiblePriority = priorityPending.filter((document) =>
+    statuses.includes(document.processingStatus),
+  );
+  const remainingLimit = Math.max(0, limit - eligiblePriority.length);
+
+  const backlog =
+    remainingLimit > 0
+      ? await db.query.concoursDocuments.findMany({
+          where: inArray(concoursDocuments.processingStatus, statuses),
+          orderBy: [
+            desc(concoursDocuments.isImportant),
+            desc(concoursDocuments.discoveredAt),
+          ],
+          limit: remainingLimit + priorityIds.length,
+        })
+      : [];
+
+  const pending = [...eligiblePriority, ...backlog]
+    .filter(
+      (document, index, documents) =>
+        documents.findIndex((item) => item.id === document.id) === index,
+    )
+    .slice(0, limit);
+
+  watcherLog("processing.queue.selected", {
     limit,
+    statuses,
+    priorityIds,
+    priorityEligible: eligiblePriority.length,
+    selected: pending.map((document) => ({
+      id: document.id,
+      title: document.title,
+      updateLabel: document.updateLabel,
+      status: document.processingStatus,
+      isImportant: document.isImportant,
+      discoveredAt: document.discoveredAt,
+    })),
   });
 
   let processed = 0;
 
   for (const document of pending) {
+    watcherLog("processing.document.start", {
+      id: document.id,
+      title: document.title,
+      updateLabel: document.updateLabel,
+      pdfUrl: document.pdfUrl,
+      hasAttachment: document.hasAttachment,
+      isImportant: document.isImportant,
+    });
+
     await db
       .update(concoursDocuments)
       .set({ processingStatus: "processing", updatedAt: new Date() })
@@ -35,6 +84,10 @@ export async function processPendingDocuments(limit = 5) {
 
     try {
       if (!document.hasAttachment) {
+        watcherLog("processing.document.no-attachment", {
+          id: document.id,
+          sourcePageUrl: document.sourcePageUrl,
+        });
         await db
           .update(concoursDocuments)
           .set({
@@ -43,32 +96,80 @@ export async function processPendingDocuments(limit = 5) {
             updatedAt: new Date(),
           })
           .where(eq(concoursDocuments.id, document.id));
+        processed += 1;
+        watcherLog("processing.document.done", {
+          id: document.id,
+          processed,
+          status: "needs_review",
+        });
         continue;
       }
 
+      watcherLog("processing.pdf.fetch.start", {
+        id: document.id,
+        pdfUrl: document.pdfUrl,
+      });
       const response = await fetchMinistryResource(document.pdfUrl);
+      watcherLog("processing.pdf.fetch.done", {
+        id: document.id,
+        status: response.status,
+        ok: response.ok,
+      });
       if (!response.ok) {
         throw new Error(`PDF download failed: ${response.status}`);
       }
 
       const pdfBytes = await response.arrayBuffer();
+      watcherLog("processing.pdf.bytes", {
+        id: document.id,
+        bytes: pdfBytes.byteLength,
+      });
       const firstPass = await extractConcoursWithGemini(
         pdfBytes,
         document.pdfUrl,
       );
       let finalExtraction = firstPass;
       let validation = validateExtraction(firstPass);
+      watcherLog("processing.validation.first-pass", {
+        id: document.id,
+        issues: validation.issues,
+        needsSecondPass: validation.needsSecondPass,
+        isRadiologyRelevant: validation.isRadiologyRelevant,
+        radiologySeats: validation.radiologySeats,
+      });
 
       if (validation.needsSecondPass) {
+        watcherLog("processing.second-pass.start", { id: document.id });
         finalExtraction = await extractConcoursWithGemini(
           pdfBytes,
           document.pdfUrl,
           true,
         );
         validation = validateExtraction(finalExtraction);
+        watcherLog("processing.validation.second-pass", {
+          id: document.id,
+          issues: validation.issues,
+          needsSecondPass: validation.needsSecondPass,
+          isRadiologyRelevant: validation.isRadiologyRelevant,
+          radiologySeats: validation.radiologySeats,
+        });
       }
 
       const status = validation.issues.length ? "needs_review" : "processed";
+      watcherLog("processing.document.extracted", {
+        id: document.id,
+        status,
+        title: buildDisplayTitle(finalExtraction),
+        documentType: finalExtraction.documentType,
+        region: finalExtraction.region,
+        examDate: validation.examDate,
+        deadline: validation.applicationDeadline,
+        totalSeats: finalExtraction.totalSeats,
+        radiologySeats: validation.radiologySeats,
+        confidence: finalExtraction.confidence,
+        specialtyRows: finalExtraction.specialtyRows,
+        issues: validation.issues,
+      });
 
       await db
         .update(concoursDocuments)
@@ -105,6 +206,13 @@ export async function processPendingDocuments(limit = 5) {
             title: buildDisplayTitle(finalExtraction),
           })
         : null;
+      watcherLog("processing.candidate-check.done", {
+        id: document.id,
+        checked: candidateCheck !== null,
+        result: candidateCheck,
+        documentType: finalExtraction.documentType,
+        updateLabel: document.updateLabel,
+      });
 
       await replaceSpecialtyRows(
         document.id,
@@ -117,12 +225,22 @@ export async function processPendingDocuments(limit = 5) {
       );
 
       await detectSameDayConflicts(document.id);
+      watcherLog("processing.document.persisted", {
+        id: document.id,
+        status,
+      });
 
       if (
         document.isImportant ||
         validation.isRadiologyRelevant ||
         validation.issues.length
       ) {
+        watcherLog("telegram.processed.send", {
+          id: document.id,
+          title: buildDisplayTitle(finalExtraction),
+          status,
+          validationIssues: validation.issues,
+        });
         await sendTelegramMessage(
           formatProcessedMessage({
             title: buildDisplayTitle(finalExtraction),
@@ -139,9 +257,18 @@ export async function processPendingDocuments(limit = 5) {
       }
 
       processed += 1;
+      watcherLog("processing.document.done", {
+        id: document.id,
+        processed,
+      });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown processing failure";
+      watcherWarn("processing.document.failed", {
+        id: document.id,
+        title: document.title,
+        message,
+      });
 
       await db
         .update(concoursDocuments)

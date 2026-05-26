@@ -2,7 +2,9 @@ import "dotenv/config";
 
 import { processPendingDocuments } from "@/server/process-pending";
 
-const limit = Number(process.env.PROCESS_LIMIT ?? 5);
+const limit = Number(
+  process.env.PROCESS_LIMIT ?? process.env.TRIGGER_PROCESS_LIMIT ?? 5,
+);
 
 processPendingDocuments(limit)
   .then((result) => {

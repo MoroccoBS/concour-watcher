@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 import { type AiExtraction, aiExtractionSchema } from "./validation";
+import { watcherLog } from "./watcher-log";
 
 const responseSchema = {
   type: Type.OBJECT,
@@ -73,6 +74,12 @@ export async function extractConcoursWithGemini(
 
   const ai = new GoogleGenAI({ apiKey });
   const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  watcherLog("ai.extraction.request", {
+    pdfUrl,
+    model,
+    secondPass,
+    pdfBytes: pdfBytes.byteLength,
+  });
   const prompt = [
     "You are verifying Moroccan Ministry of Health concours PDFs.",
     "Extract only facts visible in the PDF. The notice can be Arabic, French, scanned, or mixed.",
@@ -113,7 +120,29 @@ export async function extractConcoursWithGemini(
   const raw = response.text;
   if (!raw) throw new Error("Gemini returned an empty response.");
 
-  return aiExtractionSchema.parse(JSON.parse(raw));
+  watcherLog("ai.extraction.response", {
+    pdfUrl,
+    model,
+    secondPass,
+    raw,
+  });
+
+  const parsed = JSON.parse(raw);
+  parsed.confidence = normalizeConfidence(parsed.confidence);
+  const extraction = aiExtractionSchema.parse(parsed);
+
+  watcherLog("ai.extraction.parsed", {
+    pdfUrl,
+    secondPass,
+    documentType: extraction.documentType,
+    region: extraction.region,
+    totalSeats: extraction.totalSeats,
+    radiologySeats: extraction.radiologySeats,
+    confidence: extraction.confidence,
+    specialtyRows: extraction.specialtyRows.length,
+  });
+
+  return extraction;
 }
 
 const candidateCheckSchema = {
@@ -146,6 +175,12 @@ export async function checkCandidateWithGemini(
 
   const ai = new GoogleGenAI({ apiKey });
   const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  watcherLog("ai.candidate.request", {
+    pdfUrl,
+    model,
+    candidateName,
+    pdfBytes: pdfBytes.byteLength,
+  });
   const prompt = [
     "You are checking whether a candidate name appears in a Moroccan Ministry of Health concours PDF.",
     "The PDF may be Arabic, French, scanned, or mixed. Check tables, annexes, lists, and all visible pages.",
@@ -183,16 +218,33 @@ export async function checkCandidateWithGemini(
   const raw = response.text;
   if (!raw) throw new Error("Gemini returned an empty candidate check.");
 
+  watcherLog("ai.candidate.response", {
+    pdfUrl,
+    model,
+    candidateName,
+    raw,
+  });
+
   const parsed = JSON.parse(raw) as CandidateCheck;
-  const rawConfidence = Number(parsed.confidence ?? 0);
+  const result = {
+    found: Boolean(parsed.found),
+    matchedName: parsed.matchedName ?? null,
+    confidence: normalizeConfidence(parsed.confidence),
+    evidence: parsed.evidence ?? "",
+  };
+  watcherLog("ai.candidate.parsed", {
+    pdfUrl,
+    candidateName,
+    ...result,
+  });
+  return result;
+}
+
+function normalizeConfidence(value: unknown) {
+  const rawConfidence = Number(value ?? 0);
   const confidence =
     rawConfidence > 0 && rawConfidence <= 1
       ? rawConfidence * 100
       : rawConfidence;
-  return {
-    found: Boolean(parsed.found),
-    matchedName: parsed.matchedName ?? null,
-    confidence: Math.max(0, Math.min(100, Math.round(confidence))),
-    evidence: parsed.evidence ?? "",
-  };
+  return Math.max(0, Math.min(100, Math.round(confidence)));
 }

@@ -44,7 +44,11 @@ export function TrackerShell() {
   >({});
 
   const cases = useMemo(() => groupConcours(data), [data]);
-  const filtered = useMemo(() => filterCases(cases, filter), [cases, filter]);
+  const isAdminUnlocked = Boolean(adminToken);
+  const filtered = useMemo(
+    () => filterCases(cases, filter, isAdminUnlocked),
+    [cases, filter, isAdminUnlocked],
+  );
 
   // Search filter
   const searchedCases = useMemo(() => {
@@ -63,8 +67,10 @@ export function TrackerShell() {
     );
   }, [filtered, searchQuery]);
 
-  const stats = useMemo(() => getStats(cases), [cases]);
-  const isAdminUnlocked = Boolean(adminToken);
+  const stats = useMemo(
+    () => getStats(cases, isAdminUnlocked),
+    [cases, isAdminUnlocked],
+  );
 
   // Desktop default selection
   const activeCaseId = selectedCaseId || (searchedCases[0]?.id ?? null);
@@ -95,8 +101,11 @@ export function TrackerShell() {
         >
           {/* Compact search bar */}
           <div className="flex items-center gap-2 border-b border-border/40 bg-background/50 p-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 text-stone-400" />
+            <div className="relative flex-1 group">
+              <Search
+                size={20}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary/75 transition-colors duration-300"
+              />
               <Input
                 type="text"
                 placeholder="Search region, specialty, or updates..."
@@ -229,22 +238,32 @@ export function TrackerShell() {
 function filterCases(
   cases: ConcoursCase[],
   filter: "radiology" | "all" | "review",
+  isAdminUnlocked: boolean,
 ) {
   return cases.filter((item) => {
     if (filter === "all") return true;
     if (filter === "review") return item.hasReview;
-    if (item.primary.applicationStatus === "skip") return false;
-    if (item.primary.applicationStatus === "closed") return false;
-    return item.isRadiologyRelevant || item.hasReview || item.hasCandidateMatch;
+    if (isAdminUnlocked) {
+      if (item.primary.applicationStatus === "skip") return false;
+      if (item.primary.applicationStatus === "closed") return false;
+    }
+    return (
+      item.isRadiologyRelevant ||
+      item.hasReview ||
+      (isAdminUnlocked && item.hasCandidateMatch)
+    );
   });
 }
 
-function getStats(cases: ConcoursCase[]) {
+function getStats(cases: ConcoursCase[], isAdminUnlocked: boolean) {
   const focus = cases.filter(
     (item) =>
-      item.primary.applicationStatus !== "skip" &&
-      item.primary.applicationStatus !== "closed" &&
-      (item.isRadiologyRelevant || item.hasReview || item.hasCandidateMatch),
+      (!isAdminUnlocked ||
+        (item.primary.applicationStatus !== "skip" &&
+          item.primary.applicationStatus !== "closed")) &&
+      (item.isRadiologyRelevant ||
+        item.hasReview ||
+        (isAdminUnlocked && item.hasCandidateMatch)),
   );
   return {
     total: cases.length,

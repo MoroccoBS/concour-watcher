@@ -57,7 +57,7 @@ Local `.env` needs:
 - `TELEGRAM_CHAT_ID`
 - `CANDIDATE_FULL_NAME` if you want name-check Telegram alerts
 - `LOCAL_WATCHER_ID=windows-home`
-- `LOCAL_PROCESS_LIMIT=1`
+- `LOCAL_PROCESS_LIMIT=2`
 - `WATCHER_STALE_MINUTES=45`
 - `TEST_CANDIDATE_PDF` and `TEST_CANDIDATE_FULL_NAME` only when running the optional name-check test
 
@@ -81,7 +81,7 @@ Install the Windows scheduled task:
 .\scripts\install-windows-watcher.ps1
 ```
 
-The task runs every 10 minutes through a hidden `wscript.exe` launcher, wakes the computer when Windows allows it, writes logs to `logs/watcher.log`, and stores secrets only in local `.env`. Remove it with:
+The task runs every 10 minutes through a hidden `wscript.exe` launcher, wakes the computer when Windows allows it, writes detailed JSON-line style run logs to `logs/watcher.log`, and stores secrets only in local `.env`. Newly inserted documents are prioritized for processing in the same run before older pending backlog. Remove it with:
 
 ```powershell
 .\scripts\uninstall-windows-watcher.ps1

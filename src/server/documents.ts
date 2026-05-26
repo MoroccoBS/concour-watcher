@@ -6,6 +6,7 @@ import type { ApplicationStatus } from "@/lib/status";
 import { formatDateTime } from "@/lib/utils";
 import type { DiscoveredPdf } from "./scraper";
 import { sendTelegramMessage } from "./telegram";
+import { watcherLog, watcherWarn } from "./watcher-log";
 
 export async function listDocuments() {
   if (!db) return [];
@@ -22,7 +23,14 @@ export async function listDocuments() {
 }
 
 export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
-  if (!db || items.length === 0) return { inserted: 0 };
+  if (!db || items.length === 0) return { inserted: 0, insertedIds: [] };
+
+  watcherLog("documents.upsert.start", {
+    discovered: items.length,
+    important: items.filter((item) => item.isImportant).length,
+    withAttachment: items.filter((item) => item.hasAttachment).length,
+    withoutAttachment: items.filter((item) => !item.hasAttachment).length,
+  });
 
   const inserted = await db
     .insert(concoursDocuments)
@@ -41,11 +49,26 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
     .onConflictDoNothing({ target: concoursDocuments.pdfUrl })
     .returning();
 
+  watcherLog("documents.upsert.done", {
+    inserted: inserted.length,
+    insertedIds: inserted.map((item) => item.id),
+    skippedAsExisting: items.length - inserted.length,
+  });
+
   const important = inserted.filter((item) => item.isImportant).slice(0, 5);
   for (const item of important) {
+    watcherLog("telegram.discovery.send", {
+      id: item.id,
+      title: item.title,
+      updateLabel: item.updateLabel,
+      hasAttachment: item.hasAttachment,
+    });
     const result = await sendTelegramMessage(formatDiscoveryMessage(item));
     if ("error" in result && result.error) {
-      console.warn(result.error);
+      watcherWarn("telegram.discovery.failed", {
+        id: item.id,
+        error: result.error,
+      });
     }
   }
 
@@ -58,11 +81,16 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
       ].join("\n"),
     );
     if ("error" in result && result.error) {
-      console.warn(result.error);
+      watcherWarn("telegram.discovery-summary.failed", {
+        error: result.error,
+      });
     }
   }
 
-  return { inserted: inserted.length };
+  return {
+    inserted: inserted.length,
+    insertedIds: inserted.map((item) => item.id),
+  };
 }
 
 function compactTitle(value: string) {
