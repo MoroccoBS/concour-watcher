@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",
-    "@cloudflare/workers-types": "^4.20260525.1",
+    "@cloudflare/workers-types": "^4.20260526.1",
     "@tailwindcss/postcss": "^4.3.0",
     "@trigger.dev/build": "4.4.6",
     "@types/node": "^25.9.1",
