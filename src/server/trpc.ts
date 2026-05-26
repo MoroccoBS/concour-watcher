@@ -4,8 +4,13 @@ import { z } from "zod";
 
 import { demoDocuments } from "@/lib/demo-data";
 import { applicationStatuses } from "@/lib/status";
-import { listDocuments, updateDocumentAdmin } from "./documents";
+import {
+  listDocuments,
+  queueDocumentReprocess,
+  updateDocumentAdmin,
+} from "./documents";
 import { getWatcherHealth } from "./runner-heartbeat";
+import { listWatcherRuns } from "./watcher-runs";
 
 export async function createContext(request: Request) {
   return {
@@ -49,9 +54,13 @@ export const appRouter = t.router({
         }),
       )
       .mutation(({ input }) => updateDocumentAdmin(input)),
+    queueReprocess: adminProcedure
+      .input(z.object({ id: z.string().uuid() }))
+      .mutation(({ input }) => queueDocumentReprocess(input.id)),
   }),
   watcher: t.router({
     health: t.procedure.query(() => getWatcherHealth()),
+    runs: adminProcedure.query(() => listWatcherRuns()),
   }),
 });
 

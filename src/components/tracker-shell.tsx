@@ -30,6 +30,9 @@ export function TrackerShell() {
   const updateAdmin = trpc.documents.updateAdmin.useMutation({
     onSuccess: () => utils.documents.list.invalidate(),
   });
+  const queueReprocess = trpc.documents.queueReprocess.useMutation({
+    onSuccess: () => utils.documents.list.invalidate(),
+  });
   const filter = useFilterStore((state) => state.filter);
   const setFilter = useFilterStore((state) => state.setFilter);
   const adminToken = useAdminStore((state) => state.adminToken);
@@ -45,6 +48,9 @@ export function TrackerShell() {
 
   const cases = useMemo(() => groupConcours(data), [data]);
   const isAdminUnlocked = Boolean(adminToken);
+  const { data: watcherRuns = [] } = trpc.watcher.runs.useQuery(undefined, {
+    enabled: isAdminUnlocked,
+  });
   const filtered = useMemo(
     () => filterCases(cases, filter, isAdminUnlocked),
     [cases, filter, isAdminUnlocked],
@@ -85,6 +91,7 @@ export function TrackerShell() {
         stats={stats}
         filter={filter}
         watcherHealth={watcherHealth}
+        watcherRuns={watcherRuns}
         hasAdminToken={isAdminUnlocked}
         onFilterChange={setFilter}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -185,6 +192,7 @@ export function TrackerShell() {
             isAdminUnlocked={isAdminUnlocked}
             expandedSpecialties={expandedSpecialties}
             updatePending={updateAdmin.isPending}
+            reprocessPending={queueReprocess.isPending}
             onToggleSpecialties={(id) =>
               setExpandedSpecialties((current) => ({
                 ...current,
@@ -208,6 +216,9 @@ export function TrackerShell() {
                   adminNotes: notes,
                 });
               }
+            }}
+            onReprocess={(documentId) => {
+              queueReprocess.mutate({ id: documentId });
             }}
           />
         </section>

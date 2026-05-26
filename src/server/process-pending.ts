@@ -2,7 +2,11 @@ import { desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { type ConcoursDocument, concoursDocuments } from "@/db/schema";
-import { detectSameDayConflicts, replaceSpecialtyRows } from "./documents";
+import {
+  createDocumentEvent,
+  detectSameDayConflicts,
+  replaceSpecialtyRows,
+} from "./documents";
 import { checkCandidateWithGemini, extractConcoursWithGemini } from "./gemini";
 import { fetchMinistryResource } from "./ministry-fetch";
 import { sendTelegramMessage } from "./telegram";
@@ -37,7 +41,7 @@ export async function processPendingDocuments(
           where: inArray(concoursDocuments.processingStatus, statuses),
           orderBy: [
             desc(concoursDocuments.isImportant),
-            desc(concoursDocuments.discoveredAt),
+            desc(concoursDocuments.updatedAt),
           ],
           limit: remainingLimit + priorityIds.length,
         })
@@ -225,6 +229,19 @@ export async function processPendingDocuments(
       );
 
       await detectSameDayConflicts(document.id);
+      await createDocumentEvent({
+        documentId: document.id,
+        type: status === "processed" ? "processed" : "needs_review",
+        message:
+          status === "processed"
+            ? "AI extraction completed"
+            : "AI extraction needs review",
+        metadata: {
+          confidence: finalExtraction.confidence,
+          issues: validation.issues,
+          documentType: finalExtraction.documentType,
+        },
+      });
       watcherLog("processing.document.persisted", {
         id: document.id,
         status,
@@ -278,6 +295,12 @@ export async function processPendingDocuments(
           updatedAt: new Date(),
         })
         .where(eq(concoursDocuments.id, document.id));
+
+      await createDocumentEvent({
+        documentId: document.id,
+        type: "processing_failed",
+        message,
+      });
 
       await sendTelegramMessage(
         ["<b>Concours processing failed</b>", document.title, message].join(

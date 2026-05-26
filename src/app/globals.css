@@ -96,16 +96,16 @@ body {
 .dark {
   --background: oklch(0.16 0.006 60);
   --foreground: oklch(0.97 0.004 60);
-  --card: oklch(0.20 0.008 60);
+  --card: oklch(0.2 0.008 60);
   --card-foreground: oklch(0.97 0.004 60);
-  --popover: oklch(0.20 0.008 60);
+  --popover: oklch(0.2 0.008 60);
   --popover-foreground: oklch(0.97 0.004 60);
   --primary: oklch(0.58 0.17 48.998);
   --primary-foreground: oklch(0.16 0.006 60);
   --secondary: oklch(0.24 0.008 60);
   --secondary-foreground: oklch(0.58 0.17 48.998);
   --muted: oklch(0.22 0.008 60);
-  --muted-foreground: oklch(0.70 0.005 60);
+  --muted-foreground: oklch(0.7 0.005 60);
   --accent: oklch(0.22 0.008 60);
   --accent-foreground: oklch(0.97 0.004 60);
   --destructive: oklch(0.704 0.191 22.216);
@@ -134,11 +134,18 @@ body {
   body {
     @apply bg-background text-foreground antialiased font-sans;
   }
-  h1, h2, h3, h4, h5, h6, .font-serif {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-serif {
     font-family: var(--font-serif), Georgia, serif;
     @apply font-semibold tracking-tight;
   }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {

@@ -1,6 +1,9 @@
 import type { ConcoursDocument, SpecialtyRow } from "@/db/schema";
 
-type DocumentWithRows = ConcoursDocument & { specialtyRows: SpecialtyRow[] };
+type DocumentWithRows = ConcoursDocument & {
+  specialtyRows: SpecialtyRow[];
+  events: [];
+};
 
 export const demoDocuments: DocumentWithRows[] = [
   {
@@ -50,5 +53,6 @@ export const demoDocuments: DocumentWithRows[] = [
         createdAt: new Date("2026-05-22T18:01:59+01:00"),
       },
     ],
+    events: [],
   },
 ];

@@ -10,6 +10,7 @@ import {
 } from "@/server/runner-heartbeat";
 import { discoverSourceLinks } from "@/server/scraper";
 import { watcherLog } from "@/server/watcher-log";
+import { finishWatcherRun, startWatcherRun } from "@/server/watcher-runs";
 
 function getProcessLimit() {
   const value = Number(
@@ -25,6 +26,10 @@ async function main() {
   const runnerId = getLocalRunnerId();
   const processLimit = getProcessLimit();
   watcherLog("watcher.run.start", { runnerId, processLimit });
+  const run = await startWatcherRun({
+    runnerId,
+    metadata: { processLimit },
+  });
   await markWatcherStarted(runnerId);
 
   try {
@@ -40,6 +45,20 @@ async function main() {
       inserted: discovery.inserted,
       processed: processing.processed,
     });
+    if (run) {
+      await finishWatcherRun({
+        id: run.id,
+        status: "completed",
+        found: links.length,
+        inserted: discovery.inserted,
+        processed: processing.processed,
+        metadata: {
+          processLimit,
+          insertedIds: discovery.insertedIds,
+          processing,
+        },
+      });
+    }
 
     watcherLog("watcher.run.ok", {
       runnerId,
@@ -49,10 +68,19 @@ async function main() {
       processing,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     watcherLog("watcher.run.error", {
       runnerId,
-      message: error instanceof Error ? error.message : String(error),
+      message,
     });
+    if (run) {
+      await finishWatcherRun({
+        id: run.id,
+        status: "failed",
+        error: message,
+        metadata: { processLimit },
+      });
+    }
     await markWatcherError({ runnerId, error });
     throw error;
   }

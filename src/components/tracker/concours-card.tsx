@@ -36,10 +36,18 @@ export function ConcoursCard({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap gap-2">
-              <Badge className={cn("px-2.5 py-0.5 text-[10px] font-mono tracking-wider uppercase font-semibold", statusTone(status))}>
+              <Badge
+                className={cn(
+                  "px-2.5 py-0.5 text-[10px] font-mono tracking-wider uppercase font-semibold",
+                  statusTone(status),
+                )}
+              >
                 {statusLabel(status)}
               </Badge>
-              <Badge variant="outline" className="border-border bg-background/50 text-[10px] font-mono tracking-wider uppercase font-semibold text-stone-600">
+              <Badge
+                variant="outline"
+                className="border-border bg-background/50 text-[10px] font-mono tracking-wider uppercase font-semibold text-stone-600"
+              >
                 {decisionSummary(status)}
               </Badge>
               {item.latestUpdate.updateLabel ? (
@@ -82,7 +90,9 @@ export function ConcoursCard({
             icon={<RadioTower className="h-4 w-4" />}
             label="Radiology Seats"
             value={item.radiologySeats?.toString() ?? "0"}
-            isHighlight={Boolean(item.radiologySeats && item.radiologySeats > 0)}
+            isHighlight={Boolean(
+              item.radiologySeats && item.radiologySeats > 0,
+            )}
           />
         </div>
 
@@ -109,7 +119,7 @@ export function ConcoursCard({
               rel="noreferrer"
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "text-xs font-semibold px-4 py-2 hover:bg-muted"
+                "text-xs font-semibold px-4 py-2 hover:bg-muted",
               )}
             >
               <ExternalLink className="h-4 w-4 mr-1.5" />
@@ -123,14 +133,16 @@ export function ConcoursCard({
 }
 
 function cardStatusTone(status: string) {
-  return {
-    new: "border-t border-t-stone-200/50",
-    maybe: "border-t border-t-amber-300 bg-amber-50/5",
-    apply: "border-t border-t-emerald-300 bg-emerald-50/5",
-    applied: "border-t border-t-teal-300 bg-teal-50/5",
-    skip: "opacity-75 bg-stone-50/30",
-    closed: "opacity-60 bg-stone-50/40",
-  }[status] || "";
+  return (
+    {
+      new: "border-t border-t-stone-200/50",
+      maybe: "border-t border-t-amber-300 bg-amber-50/5",
+      apply: "border-t border-t-emerald-300 bg-emerald-50/5",
+      applied: "border-t border-t-teal-300 bg-teal-50/5",
+      skip: "opacity-75 bg-stone-50/30",
+      closed: "opacity-60 bg-stone-50/40",
+    }[status] || ""
+  );
 }
 
 function DocumentPill({ item }: { item: DocumentItem }) {
@@ -174,7 +186,8 @@ function Info({
     <div
       className={cn(
         "flex gap-3 rounded-md border border-border/80 bg-background/40 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.01)] transition-colors hover:border-border",
-        isHighlight && "border-emerald-200 bg-emerald-50/10 text-accent-success",
+        isHighlight &&
+          "border-emerald-200 bg-emerald-50/10 text-accent-success",
       )}
     >
       <div className="mt-0.5 text-primary/80">{icon}</div>

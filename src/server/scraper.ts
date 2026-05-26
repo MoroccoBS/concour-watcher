@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 
 import { absoluteMinistryUrl } from "@/lib/utils";
+import { discoverEmploiPublicLinks } from "./emploi-public";
 import { fetchMinistryResource } from "./ministry-fetch";
 import {
   importantLinkKeywords,
@@ -320,5 +321,12 @@ export async function discoverSourceLinks(
     found: results.length,
   });
 
-  return results;
+  const emploiPublicResults = await discoverEmploiPublicLinks();
+  watcherLog("scraper.discover.all.done", {
+    ministryFound: results.length,
+    emploiPublicFound: emploiPublicResults.length,
+    total: results.length + emploiPublicResults.length,
+  });
+
+  return [...results, ...emploiPublicResults];
 }

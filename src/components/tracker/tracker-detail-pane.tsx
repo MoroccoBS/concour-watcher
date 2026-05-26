@@ -8,6 +8,7 @@ import {
   MapPin,
   NotebookPen,
   RadioTower,
+  RotateCcw,
   Sparkles,
   UserRoundSearch,
 } from "lucide-react";
@@ -41,18 +42,22 @@ export function TrackerDetailPane({
   isAdminUnlocked,
   expandedSpecialties,
   updatePending,
+  reprocessPending,
   onToggleSpecialties,
   onStatusChange,
   onNotesChange,
+  onReprocess,
 }: {
   concoursCase: ConcoursCase | null;
   adminToken: string;
   isAdminUnlocked: boolean;
   expandedSpecialties: Record<string, boolean>;
   updatePending: boolean;
+  reprocessPending: boolean;
   onToggleSpecialties: (id: string) => void;
   onStatusChange: (status: ApplicationStatus) => void;
   onNotesChange: (notes: string) => void;
+  onReprocess: (documentId: string) => void;
 }) {
   if (!concoursCase) {
     return (
@@ -151,8 +156,10 @@ export function TrackerDetailPane({
                 key={item.id}
                 item={item}
                 isAdminUnlocked={isAdminUnlocked}
+                reprocessPending={reprocessPending}
                 expanded={Boolean(expandedSpecialties[item.id])}
                 onToggleSpecialties={() => onToggleSpecialties(item.id)}
+                onReprocess={() => onReprocess(item.id)}
               />
             ))}
           </div>
@@ -262,13 +269,17 @@ function getTimelineNodeProps(item: DocumentItem) {
 function DocumentSection({
   item,
   isAdminUnlocked,
+  reprocessPending,
   expanded,
   onToggleSpecialties,
+  onReprocess,
 }: {
   item: DocumentItem;
   isAdminUnlocked: boolean;
+  reprocessPending: boolean;
   expanded: boolean;
   onToggleSpecialties: () => void;
+  onReprocess: () => void;
 }) {
   const node = getTimelineNodeProps(item);
   return (
@@ -329,19 +340,57 @@ function DocumentSection({
             </p>
           </div>
 
-          <a
-            href={item.hasAttachment ? item.pdfUrl : item.sourcePageUrl}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "text-[10px] h-7 font-mono uppercase tracking-wider px-3 hover:bg-muted font-bold self-start mt-1 sm:mt-0",
-            )}
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            {item.hasAttachment ? "Open PDF" : "Source"}
-          </a>
+          <div className="flex flex-wrap items-center gap-2 self-start">
+            {isAdminUnlocked ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={reprocessPending}
+                onClick={onReprocess}
+                className="h-7 px-3 font-mono text-[10px] font-bold uppercase tracking-wider"
+              >
+                <RotateCcw data-icon="inline-start" />
+                Reprocess
+              </Button>
+            ) : null}
+            <a
+              href={item.hasAttachment ? item.pdfUrl : item.sourcePageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "xs" }),
+                "h-7 px-3 font-mono text-[10px] font-bold uppercase tracking-wider hover:bg-muted",
+              )}
+            >
+              <ExternalLink data-icon="inline-start" />
+              {item.hasAttachment ? "Open PDF" : "Source"}
+            </a>
+          </div>
         </div>
+
+        {isAdminUnlocked && item.events?.length ? (
+          <div className="rounded-md border border-border/60 bg-background/35 p-3">
+            <div className="mb-2 font-mono text-[9px] font-bold uppercase tracking-wider text-stone-400">
+              Document events
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {item.events.slice(0, 4).map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-start justify-between gap-3 text-xs"
+                >
+                  <span className="font-medium text-stone-700">
+                    {event.message}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] text-stone-400">
+                    {formatDateTime(event.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {isAdminUnlocked && item.candidateMatched !== null ? (
           <div className="rounded border border-violet-100 bg-violet-50/20 px-3.5 py-2.5 text-xs text-stone-700 leading-relaxed shadow-[0_1px_2px_rgba(88,28,135,0.02)]">

@@ -7,6 +7,7 @@ type RouterOutput = inferRouterOutputs<AppRouter>;
 
 export type DocumentItem = RouterOutput["documents"]["list"][number];
 export type WatcherHealth = RouterOutput["watcher"]["health"];
+export type WatcherRun = RouterOutput["watcher"]["runs"][number];
 
 export type ConcoursCase = {
   id: string;

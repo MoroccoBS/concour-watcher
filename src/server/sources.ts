@@ -6,6 +6,15 @@ export const ministrySources = [
   "https://drh.sante.gov.ma/Pages/ConcoursRegion/La%C3%A2youne-Saguia-al-Hamra.aspx",
 ];
 
+export const emploiPublicSources = [
+  "https://www.emploi-public.ma/ar/%D9%82%D8%A7%D8%A6%D9%85%D8%A9-%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA",
+];
+
+export const emploiPublicSeedDetails = [
+  "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/cc5178e1-59cb-419b-b104-364ebecacb8b",
+  "https://www.emploi-public.ma/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/776534f0-1d40-4671-99f8-b53155729098",
+];
+
 export const targetFrameKeywords = [
   "infirmier",
   "infirmiere",

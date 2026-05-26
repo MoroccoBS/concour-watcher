@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 
 import { db } from "@/db";
-import { concoursDocuments, specialtyRows } from "@/db/schema";
+import { concoursDocuments, documentEvents, specialtyRows } from "@/db/schema";
 import type { ApplicationStatus } from "@/lib/status";
 import { formatDateTime } from "@/lib/utils";
 import type { DiscoveredPdf } from "./scraper";
@@ -18,6 +18,9 @@ export async function listDocuments() {
     ],
     with: {
       specialtyRows: true,
+      events: {
+        orderBy: [desc(documentEvents.createdAt)],
+      },
     },
   });
 }
@@ -31,6 +34,15 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
     withAttachment: items.filter((item) => item.hasAttachment).length,
     withoutAttachment: items.filter((item) => !item.hasAttachment).length,
   });
+
+  const listingKeys = [
+    ...new Set(items.map((item) => item.listingKey).filter(Boolean)),
+  ] as string[];
+  const existingForListings = listingKeys.length
+    ? await db.query.concoursDocuments.findMany({
+        where: inArray(concoursDocuments.listingKey, listingKeys),
+      })
+    : [];
 
   const inserted = await db
     .insert(concoursDocuments)
@@ -57,13 +69,26 @@ export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {
 
   const important = inserted.filter((item) => item.isImportant).slice(0, 5);
   for (const item of important) {
+    const event = getDiscoveryEvent(item, existingForListings);
+    await createDocumentEvent({
+      documentId: item.id,
+      type: event.type,
+      message: event.message,
+      metadata: {
+        updateLabel: item.updateLabel,
+        hasAttachment: item.hasAttachment,
+        pdfUrl: item.pdfUrl,
+      },
+    });
     watcherLog("telegram.discovery.send", {
       id: item.id,
       title: item.title,
       updateLabel: item.updateLabel,
       hasAttachment: item.hasAttachment,
     });
-    const result = await sendTelegramMessage(formatDiscoveryMessage(item));
+    const result = await sendTelegramMessage(
+      formatDiscoveryMessage(item, event),
+    );
     if ("error" in result && result.error) {
       watcherWarn("telegram.discovery.failed", {
         id: item.id,
@@ -102,11 +127,65 @@ function compactTitle(value: string) {
     .trim();
 }
 
-function formatDiscoveryMessage(item: typeof concoursDocuments.$inferSelect) {
-  const lines = [
-    item.hasAttachment
+function getDiscoveryEvent(
+  item: typeof concoursDocuments.$inferSelect,
+  existingForListings: Array<typeof concoursDocuments.$inferSelect>,
+) {
+  const label = item.updateLabel?.toLowerCase() ?? "";
+  const hadNoAttachment = existingForListings.some(
+    (existing) =>
+      existing.listingKey === item.listingKey && !existing.hasAttachment,
+  );
+
+  if (item.hasAttachment && hadNoAttachment) {
+    return {
+      type: "attachment_appeared",
+      message: "Attachment appeared",
+      headline: "📎 <b>Pièce jointe ajoutée</b>",
+    };
+  }
+
+  if (label.includes("planning") || label.includes("programme")) {
+    return {
+      type: "planning_added",
+      message: "Planning added",
+      headline: "🗓️ <b>Planning ajouté</b>",
+    };
+  }
+
+  if (label.includes("résultat") || label.includes("result")) {
+    return {
+      type: "results_added",
+      message: "Results added",
+      headline: "🏁 <b>Résultats ajoutés</b>",
+    };
+  }
+
+  if (label.includes("liste")) {
+    return {
+      type: "list_added",
+      message: "List document added",
+      headline: "📋 <b>Liste ajoutée</b>",
+    };
+  }
+
+  return {
+    type: item.hasAttachment ? "document_added" : "concours_without_attachment",
+    message: item.hasAttachment
+      ? "Document added"
+      : "Concours without attachment",
+    headline: item.hasAttachment
       ? "🆕 <b>Nouveau document ITS</b>"
       : "🆕 <b>Nouveau concours ITS sans pièce jointe</b>",
+  };
+}
+
+function formatDiscoveryMessage(
+  item: typeof concoursDocuments.$inferSelect,
+  event: ReturnType<typeof getDiscoveryEvent>,
+) {
+  const lines = [
+    event.headline,
     `📍 <b>${compactTitle(item.region ?? item.title)}</b>`,
     item.updateLabel ? `📌 ${item.updateLabel}` : null,
     `🕒 Détecté: ${formatDateTime(item.discoveredAt)}`,
@@ -136,6 +215,52 @@ export async function updateDocumentAdmin(input: {
     .returning();
 
   return updated;
+}
+
+export async function queueDocumentReprocess(documentId: string) {
+  if (!db) throw new Error("DATABASE_URL is not configured.");
+
+  const [updated] = await db
+    .update(concoursDocuments)
+    .set({
+      processingStatus: "pending",
+      processedAt: null,
+      validationIssues: ["Manual reprocess requested."],
+      updatedAt: new Date(),
+    })
+    .where(eq(concoursDocuments.id, documentId))
+    .returning();
+
+  if (!updated) throw new Error("Document not found.");
+
+  await createDocumentEvent({
+    documentId,
+    type: "reprocess_queued",
+    message: "Manual reprocess queued",
+  });
+
+  return updated;
+}
+
+export async function createDocumentEvent(input: {
+  documentId: string;
+  type: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (!db) return null;
+
+  const [event] = await db
+    .insert(documentEvents)
+    .values({
+      documentId: input.documentId,
+      type: input.type,
+      message: input.message,
+      metadata: input.metadata,
+    })
+    .returning();
+
+  return event;
 }
 
 export async function detectSameDayConflicts(documentId: string) {

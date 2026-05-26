@@ -5,6 +5,7 @@ A hosted concours tracker for Moroccan Ministry of Health recruitment notices, f
 ## What It Does
 
 - Scrapes official ministry pages for linked concours PDFs.
+- Cross-checks emploi-public.ma concours detail pages for CHU listings such as `ممرض من الدرجة الأولى - سُلمْ 10`.
 - Stores discoveries in Neon Postgres through Drizzle.
 - Uses Gemini to extract structured data from scanned Arabic/French PDFs.
 - Validates dates, seat counts, radiology rows, and same-day conflicts.
@@ -81,13 +82,21 @@ Install the Windows scheduled task:
 .\scripts\install-windows-watcher.ps1
 ```
 
-The task runs every 10 minutes through a hidden `wscript.exe` launcher, wakes the computer when Windows allows it, writes detailed JSON-line style run logs to `logs/watcher.log`, and stores secrets only in local `.env`. Newly inserted documents are prioritized for processing in the same run before older pending backlog. Remove it with:
+The task runs every 10 minutes through a hidden `wscript.exe` launcher, wakes the computer when Windows allows it, writes detailed JSON-line style run logs to `logs/watcher.log`, records run history in Neon, and stores secrets only in local `.env`. Newly inserted documents are prioritized for processing in the same run before older pending backlog. Remove it with:
 
 ```powershell
 .\scripts\uninstall-windows-watcher.ps1
 ```
 
 If the PC is fully shut down, scraping pauses. The UI shows watcher health, and the hosted stale monitor can send Telegram after 45 minutes without a successful local run.
+
+When schema changes are added, run:
+
+```bash
+pnpm db:migrate
+```
+
+The current watcher history migration is `drizzle/0004_watcher_runs.sql`.
 
 ## Hosted Jobs
 

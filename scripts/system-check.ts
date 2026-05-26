@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-
+import { parseEmploiPublicDetail } from "@/server/emploi-public";
 import { checkCandidateWithGemini } from "@/server/gemini";
 import { fetchMinistryResource } from "@/server/ministry-fetch";
 import { getWatcherHealth } from "@/server/runner-heartbeat";
@@ -91,7 +91,7 @@ async function runParserChecks() {
   });
   assertCheck(
     "old concours ignored",
-    links.every((item) => !item.pdfUrl.includes("2025")),
+    links.every((item) => !item.pdfUrl.includes("/2025/")),
     {
       links,
     },
@@ -118,6 +118,38 @@ async function runParserChecks() {
     "no attachment fallback detected",
     links.some((item) => item.hasAttachment === false),
     { links },
+  );
+
+  const emploiPublicLinks = parseEmploiPublicDetail(
+    `
+      <body>
+        <h1>مباريات التوظيف : ممرض من الدرجة الأولى - سُلمْ 10</h1>
+        <h3>الإدارة المنظمة المركز الاستشفائي الجامعي سوس ماسة</h3>
+        <h3>آخر أجل لإيداع الترشيحات 31 أكتوبر 2026 - 16:30</h3>
+        <h3>تاريخ إجراء المباراة 30 نونبر 2026</h3>
+        <h3>تحميل الملفات</h3>
+        <a href="/ar/تحميل/المباريات/arrete/future-chu">قرار فتح المباراة</a>
+        <a href="/ar/تحميل/المباريات/list_convoques/future-chu">لائحة المترشحين المدعوين لاجتياز المباراة</a>
+        <a href="/ar/تحميل/المباريات/resultats/future-chu">نتيجة المباراة</a>
+        <a href="/ar/تحميل/المباريات/list_attente/future-chu">لائحة الانتظار</a>
+        <p>تخصص : - ممرض متعدد التخصصات الدرجة : ممرض من الدرجة الأولى - سُلمْ 10 عدد المناصب : 15</p>
+      </body>
+    `,
+    "https://www.emploi-public.ma/ar/تفاصيل/المباريات/future-chu",
+  );
+  const emploiPublicLabels = emploiPublicLinks.map((item) => item.updateLabel);
+
+  assertCheck(
+    "emploi-public target grade detected",
+    emploiPublicLinks.length === 4,
+    { emploiPublicLinks },
+  );
+  assertCheck(
+    "emploi-public results/list labels detected",
+    emploiPublicLabels.includes("Résultats") &&
+      emploiPublicLabels.includes("Liste d'attente") &&
+      emploiPublicLabels.includes("Liste des convoqués"),
+    { emploiPublicLabels },
   );
 }
 

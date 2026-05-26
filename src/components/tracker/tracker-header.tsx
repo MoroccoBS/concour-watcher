@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn, formatDateTime } from "@/lib/utils";
 import type { TrackerFilter } from "@/store/filter-store";
-import type { WatcherHealth } from "./types";
+import type { WatcherHealth, WatcherRun } from "./types";
 
 type Stats = {
   total: number;
@@ -37,6 +37,7 @@ export function TrackerHeader({
   stats,
   filter,
   watcherHealth,
+  watcherRuns,
   hasAdminToken,
   onFilterChange,
   onOpenSettings,
@@ -44,6 +45,7 @@ export function TrackerHeader({
   stats: Stats;
   filter: TrackerFilter;
   watcherHealth?: WatcherHealth;
+  watcherRuns: WatcherRun[];
   hasAdminToken: boolean;
   onFilterChange: (filter: TrackerFilter) => void;
   onOpenSettings: () => void;
@@ -146,6 +148,7 @@ export function TrackerHeader({
       {watcherHealth ? (
         <WatcherDialog
           health={watcherHealth}
+          runs={watcherRuns}
           open={watcherOpen}
           onOpenChange={setWatcherOpen}
         />
@@ -199,10 +202,12 @@ function WatcherBadge({ health }: { health: WatcherHealth }) {
 
 function WatcherDialog({
   health,
+  runs,
   open,
   onOpenChange,
 }: {
   health: WatcherHealth;
+  runs: WatcherRun[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -253,6 +258,58 @@ function WatcherDialog({
           {heartbeat?.lastError ? (
             <div className="rounded-md border border-orange-200 bg-orange-50/60 p-3 text-xs leading-relaxed text-accent-warning">
               {heartbeat.lastError}
+            </div>
+          ) : null}
+          {runs.length ? (
+            <div className="mt-4 border-t border-border/50 pt-4">
+              <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                Run history
+              </div>
+              <div className="overflow-hidden rounded-md border border-border/60">
+                {runs.slice(0, 8).map((run) => (
+                  <div
+                    key={run.id}
+                    className="grid grid-cols-[1fr_auto] gap-3 border-b border-border/50 bg-background/45 px-3 py-2 text-xs last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "h-4 px-1.5 font-mono text-[9px] uppercase",
+                            run.status === "completed"
+                              ? "border-emerald-200 bg-emerald-50 text-accent-success"
+                              : run.status === "failed"
+                                ? "border-red-200 bg-red-50 text-red-800"
+                                : "border-amber-200 bg-amber-50 text-accent-warning",
+                          )}
+                        >
+                          {run.status}
+                        </Badge>
+                        <span className="font-mono text-[10px] text-stone-400">
+                          {formatDateTime(run.startedAt)}
+                        </span>
+                      </div>
+                      {run.error ? (
+                        <p className="mt-1 truncate text-[11px] text-red-800">
+                          {run.error}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="text-right font-mono text-[10px] leading-relaxed text-stone-600">
+                      <div>
+                        {run.found ?? 0}/{run.inserted ?? 0}/
+                        {run.processed ?? 0}
+                      </div>
+                      <div className="text-stone-400">
+                        {run.durationMs
+                          ? `${Math.round(run.durationMs / 1000)}s`
+                          : "running"}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
