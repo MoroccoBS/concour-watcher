@@ -187,13 +187,6 @@ export function MoroccoHeatmapModal({
               </DialogTitle>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="h-8 w-8 rounded-full p-0 text-stone-400 hover:bg-muted hover:text-stone-900"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Modal Main Split Viewport */}
