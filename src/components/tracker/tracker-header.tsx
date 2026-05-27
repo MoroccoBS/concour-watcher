@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  Compass,
   Filter,
   Lock,
   RadioTower,
@@ -41,6 +42,7 @@ export function TrackerHeader({
   hasAdminToken,
   onFilterChange,
   onOpenSettings,
+  onOpenHeatmap,
 }: {
   stats: Stats;
   filter: TrackerFilter;
@@ -49,6 +51,7 @@ export function TrackerHeader({
   hasAdminToken: boolean;
   onFilterChange: (filter: TrackerFilter) => void;
   onOpenSettings: () => void;
+  onOpenHeatmap: () => void;
 }) {
   const [watcherOpen, setWatcherOpen] = useState(false);
 
@@ -118,6 +121,14 @@ export function TrackerHeader({
             >
               <Filter data-icon="inline-start" />
               Show All
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onOpenHeatmap}
+              className="text-xs font-semibold border-primary/20 hover:border-primary/40 hover:bg-primary/[0.02]"
+            >
+              <Compass data-icon="inline-start" className="text-primary" />
+              Regional Heatmap
             </Button>
           </div>
 

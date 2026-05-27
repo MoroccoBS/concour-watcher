@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ConcoursSidebarItem } from "@/components/tracker/concours-sidebar-item";
 import { TrackerDetailPane } from "@/components/tracker/tracker-detail-pane";
 import { TrackerHeader } from "@/components/tracker/tracker-header";
+import { MoroccoHeatmapModal } from "@/components/tracker/morocco-heatmap-modal";
 import { groupConcours } from "@/components/tracker/tracker-utils";
 import type { ConcoursCase } from "@/components/tracker/types";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export function TrackerShell() {
   const clearAdminToken = useAdminStore((state) => state.clearAdminToken);
   const [draftToken, setDraftToken] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [heatmapOpen, setHeatmapOpen] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSpecialties, setExpandedSpecialties] = useState<
@@ -95,6 +97,7 @@ export function TrackerShell() {
         hasAdminToken={isAdminUnlocked}
         onFilterChange={setFilter}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHeatmap={() => setHeatmapOpen(true)}
       />
 
       {/* Main split viewport */}
@@ -241,6 +244,13 @@ export function TrackerShell() {
           setDraftToken("");
           setSettingsOpen(false);
         }}
+      />
+
+      {/* Regional heatmap exploratory GIS modal */}
+      <MoroccoHeatmapModal
+        open={heatmapOpen}
+        onClose={() => setHeatmapOpen(false)}
+        documentData={data}
       />
     </main>
   );
