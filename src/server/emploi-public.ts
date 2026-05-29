@@ -26,7 +26,7 @@ function safeDecode(value: string) {
   }
 }
 
-function normalizeArabic(value: string) {
+export function normalizeArabic(value: string) {
   return cleanText(value)
     .normalize("NFD")
     .replace(/[إأآ]/g, "ا")
@@ -143,13 +143,12 @@ function isInterestingDetailPage($: cheerio.CheerioAPI) {
   return hasTargetGrade(text);
 }
 
-function isChuOrganizer(value: string | null | undefined) {
+export function isChuOrganizer(value: string | null | undefined) {
   const normalized = normalizeArabic(value ?? "");
   return (
     normalized.includes("chu") ||
     normalized.includes("centre hospitalier universitaire") ||
-    (normalized.includes("المركز الاستشفا") &&
-      normalized.includes("الجامعي"))
+    (normalized.includes("المركز الاستشفا") && normalized.includes("الجامعي"))
   );
 }
 

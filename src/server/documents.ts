@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { concoursDocuments, documentEvents, specialtyRows } from "@/db/schema";
 import type { ApplicationStatus } from "@/lib/status";
 import { formatDateTime } from "@/lib/utils";
+import { isChuOrganizer, normalizeArabic } from "./emploi-public";
 import type { DiscoveredPdf } from "./scraper";
 import { sendTelegramMessage } from "./telegram";
 import { watcherLog, watcherWarn } from "./watcher-log";
@@ -32,18 +33,11 @@ function isRetiredEmploiPublicMirror(
 ) {
   if (!item.sourcePageUrl.includes("emploi-public.ma")) return false;
   if (!item.listingKey?.startsWith("emploi-public:")) return false;
-  const text = `${item.region ?? ""} ${item.center ?? ""} ${item.title ?? ""}`
-    .normalize("NFD")
-    .replace(/[إأآ]/g, "ا")
-    .replace(/[\u064b-\u065f\u0670]/g, "")
-    .replace(/\u0640/g, "")
-    .toLowerCase();
-  const isChu =
-    text.includes("chu") ||
-    text.includes("centre hospitalier universitaire") ||
-    (text.includes("المركز الاستشفا") && text.includes("الجامعي"));
+  const text = normalizeArabic(
+    `${item.region ?? ""} ${item.center ?? ""} ${item.title ?? ""}`,
+  );
 
-  return !isChu;
+  return !isChuOrganizer(text);
 }
 
 export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {

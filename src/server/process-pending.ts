@@ -7,6 +7,7 @@ import {
   detectSameDayConflicts,
   replaceSpecialtyRows,
 } from "./documents";
+import { isChuOrganizer, normalizeArabic } from "./emploi-public";
 import { checkCandidateWithGemini, extractConcoursWithGemini } from "./gemini";
 import { fetchMinistryResource } from "./ministry-fetch";
 import { sendTelegramMessage } from "./telegram";
@@ -344,22 +345,18 @@ async function findSourceVerificationIssues(input: {
     input.document.sourcePageUrl.includes("emploi-public.ma");
   if (!db || !isEmploiPublic || !input.examDate) return [];
 
-  const text = [
-    input.extraction.region,
-    input.extraction.center,
-    input.document.region,
-    input.document.title,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .replace(/[إأآ]/g, "ا")
-    .toLowerCase();
-  const isChu =
-    text.includes("chu") ||
-    text.includes("centre hospitalier universitaire") ||
-    (text.includes("المركز الاستشفا") && text.includes("الجامعي"));
+  const text = normalizeArabic(
+    [
+      input.extraction.region,
+      input.extraction.center,
+      input.document.region,
+      input.document.title,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
 
-  if (isChu) {
+  if (isChuOrganizer(text)) {
     watcherLog("source-verification.skipped-chu", {
       id: input.document.id,
       title: input.document.title,
