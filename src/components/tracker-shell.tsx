@@ -3,9 +3,9 @@
 import { ArrowLeft, KeyRound, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ConcoursSidebarItem } from "@/components/tracker/concours-sidebar-item";
+import { MoroccoHeatmapModal } from "@/components/tracker/morocco-heatmap-modal";
 import { TrackerDetailPane } from "@/components/tracker/tracker-detail-pane";
 import { TrackerHeader } from "@/components/tracker/tracker-header";
-import { MoroccoHeatmapModal } from "@/components/tracker/morocco-heatmap-modal";
 import { groupConcours } from "@/components/tracker/tracker-utils";
 import type { ConcoursCase } from "@/components/tracker/types";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import { useFilterStore } from "@/store/filter-store";
 import { trpc } from "@/trpc/client";
 
 export function TrackerShell() {
-  const { data = [], isLoading } = trpc.documents.list.useQuery();
+  const { data = [], isLoading, isRefetching } = trpc.documents.list.useQuery();
   const { data: watcherHealth } = trpc.watcher.health.useQuery();
   const utils = trpc.useUtils();
   const updateAdmin = trpc.documents.updateAdmin.useMutation({
@@ -128,7 +128,7 @@ export function TrackerShell() {
 
           {/* Listing scrolling feed */}
           <div className="flex-1 overflow-y-auto divide-y divide-border/30">
-            {isLoading ? (
+            {isLoading || isRefetching ? (
               <div className="p-4 space-y-3">
                 {[1, 2, 3, 4].map((i) => (
                   <div

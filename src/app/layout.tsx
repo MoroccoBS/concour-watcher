@@ -6,6 +6,7 @@ import {
   Manrope,
 } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { TrpcProvider } from "@/trpc/client";
 
@@ -157,7 +158,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="CNCR Watcher" />
       </head>
       <body className="min-h-full flex flex-col">
-        <TrpcProvider>{children}</TrpcProvider>
+        <TrpcProvider>
+          {children}
+          <Toaster richColors />
+        </TrpcProvider>
       </body>
     </html>
   );

@@ -7,11 +7,13 @@ import {
   Filter,
   Lock,
   RadioTower,
+  RefreshCw,
   SearchCheck,
   ServerCog,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { toast } from "sonner";
 import Logo from "@/app/apple-icon.png";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn, formatDateTime } from "@/lib/utils";
 import type { TrackerFilter } from "@/store/filter-store";
+import { trpc } from "@/trpc/client";
 import type { WatcherHealth, WatcherRun } from "./types";
 
 type Stats = {
@@ -54,6 +57,7 @@ export function TrackerHeader({
   onOpenHeatmap: () => void;
 }) {
   const [watcherOpen, setWatcherOpen] = useState(false);
+  const utils = trpc.useUtils();
 
   return (
     <header className="sticky top-0 z-40 shrink-0 border-b border-border/80 bg-background/90 shadow-[0_1px_3px_rgba(0,0,0,0.01)] backdrop-blur-md">
@@ -133,6 +137,21 @@ export function TrackerHeader({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              className={"text-sm py-1"}
+              variant={"secondary"}
+              onClick={() =>
+                utils.documents.list.invalidate().then(() => {
+                  toast.success("Documents refreshed successfully", {
+                    duration: 1000,
+                    position: "bottom-center",
+                  });
+                })
+              }
+            >
+              <RefreshCw data-icon="inline-start" />
+              Refresh Documents
+            </Button>
             {watcherHealth ? (
               <button type="button" onClick={() => setWatcherOpen(true)}>
                 <WatcherBadge health={watcherHealth} />
