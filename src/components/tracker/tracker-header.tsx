@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   Compass,
   Filter,
@@ -46,6 +47,7 @@ export function TrackerHeader({
   onFilterChange,
   onOpenSettings,
   onOpenHeatmap,
+  onOpenCalendar,
 }: {
   stats: Stats;
   filter: TrackerFilter;
@@ -55,6 +57,7 @@ export function TrackerHeader({
   onFilterChange: (filter: TrackerFilter) => void;
   onOpenSettings: () => void;
   onOpenHeatmap: () => void;
+  onOpenCalendar: () => void;
 }) {
   const [watcherOpen, setWatcherOpen] = useState(false);
   const utils = trpc.useUtils();
@@ -125,6 +128,14 @@ export function TrackerHeader({
             >
               <Filter data-icon="inline-start" />
               Show All
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onOpenCalendar}
+              className="text-xs font-semibold border-amber-700/20 hover:border-amber-700/40 hover:bg-amber-50/30"
+            >
+              <CalendarDays data-icon="inline-start" />
+              Calendar
             </Button>
             <Button
               variant="outline"

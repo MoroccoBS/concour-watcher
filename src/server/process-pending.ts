@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 
 import { db } from "@/db";
 import { type ConcoursDocument, concoursDocuments } from "@/db/schema";
@@ -159,7 +159,13 @@ export async function processPendingDocuments(
         });
       }
 
-      const status = validation.issues.length ? "needs_review" : "processed";
+      const sourceIssues = await findSourceVerificationIssues({
+        document,
+        extraction: finalExtraction,
+        examDate: validation.examDate,
+      });
+      const issues = [...validation.issues, ...sourceIssues];
+      const status = issues.length ? "needs_review" : "processed";
       watcherLog("processing.document.extracted", {
         id: document.id,
         status,
@@ -172,7 +178,8 @@ export async function processPendingDocuments(
         radiologySeats: validation.radiologySeats,
         confidence: finalExtraction.confidence,
         specialtyRows: finalExtraction.specialtyRows,
-        issues: validation.issues,
+        issues,
+        sourceIssues,
       });
 
       await db
@@ -190,7 +197,7 @@ export async function processPendingDocuments(
           isRadiologyRelevant: validation.isRadiologyRelevant,
           confidence: finalExtraction.confidence,
           needsSecondPass: validation.needsSecondPass,
-          validationIssues: validation.issues,
+          validationIssues: issues,
           extractedJson: finalExtraction,
           ocrText: finalExtraction.rawTextSummary,
           processingStatus: status,
@@ -238,10 +245,21 @@ export async function processPendingDocuments(
             : "AI extraction needs review",
         metadata: {
           confidence: finalExtraction.confidence,
-          issues: validation.issues,
+          issues,
           documentType: finalExtraction.documentType,
         },
       });
+      if (sourceIssues.length) {
+        await createDocumentEvent({
+          documentId: document.id,
+          type: "source_conflict",
+          message: "Source conflict needs admin review",
+          metadata: {
+            issues: sourceIssues,
+            sourcePageUrl: document.sourcePageUrl,
+          },
+        });
+      }
       watcherLog("processing.document.persisted", {
         id: document.id,
         status,
@@ -256,7 +274,7 @@ export async function processPendingDocuments(
           id: document.id,
           title: buildDisplayTitle(finalExtraction),
           status,
-          validationIssues: validation.issues,
+          validationIssues: issues,
         });
         await sendTelegramMessage(
           formatProcessedMessage({
@@ -267,7 +285,7 @@ export async function processPendingDocuments(
             totalSeats: finalExtraction.totalSeats ?? null,
             radiologySeats: validation.radiologySeats,
             confidence: finalExtraction.confidence,
-            issues: validation.issues,
+            issues,
             candidateMatched: candidateCheck?.found ?? null,
           }),
         );
@@ -311,6 +329,84 @@ export async function processPendingDocuments(
   }
 
   return { processed, found: pending.length };
+}
+
+async function findSourceVerificationIssues(input: {
+  document: ConcoursDocument;
+  extraction: {
+    region?: string | null;
+    center?: string | null;
+    totalSeats?: number | null;
+  };
+  examDate: Date | null;
+}) {
+  const isEmploiPublic =
+    input.document.sourcePageUrl.includes("emploi-public.ma");
+  if (!db || !isEmploiPublic || !input.examDate) return [];
+
+  const text = [
+    input.extraction.region,
+    input.extraction.center,
+    input.document.region,
+    input.document.title,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/[إأآ]/g, "ا")
+    .toLowerCase();
+  const isChu =
+    text.includes("chu") ||
+    text.includes("centre hospitalier universitaire") ||
+    (text.includes("المركز الاستشفا") && text.includes("الجامعي"));
+
+  if (isChu) {
+    watcherLog("source-verification.skipped-chu", {
+      id: input.document.id,
+      title: input.document.title,
+    });
+    return [];
+  }
+
+  const start = new Date(input.examDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(input.examDate);
+  end.setHours(23, 59, 59, 999);
+
+  const santeMatches = await db.query.concoursDocuments.findMany({
+    where: and(
+      ne(concoursDocuments.id, input.document.id),
+      gte(concoursDocuments.examDate, start),
+      lte(concoursDocuments.examDate, end),
+    ),
+  });
+  const primaryMatches = santeMatches.filter((item) =>
+    item.sourcePageUrl.includes("drh.sante.gov.ma"),
+  );
+
+  watcherLog("source-verification.compared", {
+    id: input.document.id,
+    examDate: input.examDate,
+    primaryMatches: primaryMatches.length,
+    emploiTotalSeats: input.extraction.totalSeats,
+    primaryTotals: primaryMatches.map((item) => item.totalSeats),
+  });
+
+  if (primaryMatches.length === 0) return [];
+
+  const knownPrimaryTotals = primaryMatches
+    .map((item) => item.totalSeats)
+    .filter((value): value is number => typeof value === "number");
+  if (
+    typeof input.extraction.totalSeats === "number" &&
+    knownPrimaryTotals.length > 0 &&
+    !knownPrimaryTotals.includes(input.extraction.totalSeats)
+  ) {
+    return [
+      `emploi-public total seats (${input.extraction.totalSeats}) conflicts with sante.gov.ma (${knownPrimaryTotals.join(", ")}).`,
+    ];
+  }
+
+  return [];
 }
 
 function shouldCheckCandidate(

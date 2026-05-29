@@ -11,7 +11,7 @@ import { watcherLog, watcherWarn } from "./watcher-log";
 export async function listDocuments() {
   if (!db) return [];
 
-  return db.query.concoursDocuments.findMany({
+  const documents = await db.query.concoursDocuments.findMany({
     orderBy: [
       desc(concoursDocuments.examDate),
       desc(concoursDocuments.discoveredAt),
@@ -23,6 +23,27 @@ export async function listDocuments() {
       },
     },
   });
+
+  return documents.filter((item) => !isRetiredEmploiPublicMirror(item));
+}
+
+function isRetiredEmploiPublicMirror(
+  item: typeof concoursDocuments.$inferSelect,
+) {
+  if (!item.sourcePageUrl.includes("emploi-public.ma")) return false;
+  if (!item.listingKey?.startsWith("emploi-public:")) return false;
+  const text = `${item.region ?? ""} ${item.center ?? ""} ${item.title ?? ""}`
+    .normalize("NFD")
+    .replace(/[إأآ]/g, "ا")
+    .replace(/[\u064b-\u065f\u0670]/g, "")
+    .replace(/\u0640/g, "")
+    .toLowerCase();
+  const isChu =
+    text.includes("chu") ||
+    text.includes("centre hospitalier universitaire") ||
+    (text.includes("المركز الاستشفا") && text.includes("الجامعي"));
+
+  return !isChu;
 }
 
 export async function upsertDiscoveredPdfs(items: DiscoveredPdf[]) {

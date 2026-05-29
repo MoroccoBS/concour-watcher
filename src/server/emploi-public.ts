@@ -1,8 +1,11 @@
 import * as cheerio from "cheerio";
+import { and, eq, like } from "drizzle-orm";
 
+import { db } from "@/db";
+import { concoursDocuments, documentEvents } from "@/db/schema";
 import { fetchMinistryResource } from "./ministry-fetch";
 import type { DiscoveredPdf } from "./scraper";
-import { emploiPublicSeedDetails, emploiPublicSources } from "./sources";
+import { emploiPublicSources } from "./sources";
 import { watcherLog } from "./watcher-log";
 
 const targetGrade = "ممرض من الدرجة الأولى - سُلمْ 10";
@@ -13,6 +16,31 @@ function cleanText(value: string) {
     .replace(/\u200b/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeArabic(value: string) {
+  return cleanText(value)
+    .normalize("NFD")
+    .replace(/[إأآ]/g, "ا")
+    .replace(/[\u064b-\u065f\u0670]/g, "")
+    .replace(/\u0640/g, "")
+    .toLowerCase();
+}
+
+function hasTargetGrade(value: string) {
+  const normalized = normalizeArabic(value);
+  return (
+    normalized.includes("ممرض من الدرجة الاولى") &&
+    normalized.includes("سلم 10")
+  );
 }
 
 function absoluteEmploiUrl(value: string) {
@@ -89,11 +117,16 @@ function readHeadValue($: cheerio.CheerioAPI, label: string) {
 }
 
 function classifyDownloadLabel(text: string, href: string) {
-  const haystack = `${text} ${href}`.toLowerCase();
+  const decodedHref = safeDecode(href);
+  const haystack = `${text} ${decodedHref}`.toLowerCase();
   if (haystack.includes("list_attente") || text.includes("لائحة الانتظار")) {
     return "Liste d'attente";
   }
-  if (haystack.includes("result") || text.includes("نتيجة")) {
+  if (
+    haystack.includes("result") ||
+    haystack.includes("résultat") ||
+    text.includes("نتيجة")
+  ) {
     return "Résultats";
   }
   if (haystack.includes("list_convoques") || text.includes("المدعوين")) {
@@ -107,7 +140,17 @@ function classifyDownloadLabel(text: string, href: string) {
 
 function isInterestingDetailPage($: cheerio.CheerioAPI) {
   const text = cleanText($("body").text());
-  return text.includes(targetGrade);
+  return hasTargetGrade(text);
+}
+
+function isChuOrganizer(value: string | null | undefined) {
+  const normalized = normalizeArabic(value ?? "");
+  return (
+    normalized.includes("chu") ||
+    normalized.includes("centre hospitalier universitaire") ||
+    (normalized.includes("المركز الاستشفا") &&
+      normalized.includes("الجامعي"))
+  );
 }
 
 function readBodyField(bodyText: string, label: string) {
@@ -131,6 +174,7 @@ export function parseEmploiPublicDetail(html: string, detailUrl: string) {
   const organizer =
     readHeadValue($, "الإدارة المنظمة") ??
     readBodyField(bodyText, "الإدارة المنظمة");
+  const isChu = isChuOrganizer(organizer);
   const deadline = parseArabicFrenchDate(
     readHeadValue($, "آخر أجل لإيداع الترشيحات") ?? "",
   );
@@ -149,10 +193,27 @@ export function parseEmploiPublicDetail(html: string, detailUrl: string) {
     return [];
   }
 
+  if (!isChu) {
+    watcherLog("emploi-public.detail.primary-source-skipped", {
+      detailUrl,
+      title,
+      organizer,
+      reason: "sante.gov.ma is the primary source for non-CHU concours",
+    });
+    return [];
+  }
+
   const links: DiscoveredPdf[] = [];
   $("a[href]").each((_, anchor) => {
     const href = $(anchor).attr("href");
-    if (!href?.includes("/تحميل/المباريات/")) return;
+    if (!href) return;
+    const decodedHref = safeDecode(href);
+    if (
+      !decodedHref.includes("/تحميل/المباريات/") &&
+      !href.includes("/%D8%AA%D8%AD%D9%85%D9%8A%D9%84/")
+    ) {
+      return;
+    }
 
     const text = cleanText($(anchor).text());
     const downloadUrl = absoluteEmploiUrl(href);
@@ -193,6 +254,7 @@ export function parseEmploiPublicDetail(html: string, detailUrl: string) {
     detailUrl,
     title,
     organizer,
+    isChu,
     deadline,
     examDate,
     links: links.length,
@@ -208,13 +270,20 @@ export function parseEmploiPublicListing(html: string) {
 
   $("a[href]").each((_, anchor) => {
     const href = $(anchor).attr("href");
-    if (!href?.includes("/تفاصيل/المباريات/")) return;
+    if (!href) return;
+    const decodedHref = safeDecode(href);
+    if (
+      !decodedHref.includes("/تفاصيل/المباريات/") &&
+      !href.includes("/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/")
+    ) {
+      return;
+    }
 
     const cardText = cleanText(
       $(anchor).closest("article,li,tr,.item,.card,.box,div").text(),
     );
     const anchorText = cleanText($(anchor).text());
-    if (`${cardText} ${anchorText}`.includes(targetGrade)) {
+    if (hasTargetGrade(`${cardText} ${anchorText}`)) {
       detailUrls.add(absoluteEmploiUrl(href));
     }
   });
@@ -226,8 +295,72 @@ export function parseEmploiPublicListing(html: string) {
   return [...detailUrls];
 }
 
+async function listSavedEmploiPublicDetailUrls() {
+  if (!db) return [];
+
+  const rows = await db
+    .selectDistinct({ sourcePageUrl: concoursDocuments.sourcePageUrl })
+    .from(concoursDocuments)
+    .where(
+      and(
+        like(concoursDocuments.sourcePageUrl, `${baseUrl}/ar/%`),
+        like(concoursDocuments.listingKey, "emploi-public:%"),
+      ),
+    );
+
+  return rows.map((row) => row.sourcePageUrl);
+}
+
+async function retireNonChuEmploiPublicMirrors() {
+  if (!db) return 0;
+
+  const mirrors = await db.query.concoursDocuments.findMany({
+    where: and(
+      like(concoursDocuments.sourcePageUrl, `${baseUrl}/ar/%`),
+      like(concoursDocuments.listingKey, "emploi-public:%"),
+    ),
+  });
+  const nonChu = mirrors.filter(
+    (item) => !isChuOrganizer(`${item.region ?? ""} ${item.center ?? ""}`),
+  );
+
+  for (const item of nonChu) {
+    await db
+      .update(concoursDocuments)
+      .set({
+        isImportant: false,
+        applicationStatus: "closed",
+        processingStatus: "processed",
+        validationIssues: [
+          "Retired duplicate: sante.gov.ma is primary for non-CHU concours.",
+        ],
+        updatedAt: new Date(),
+      })
+      .where(eq(concoursDocuments.id, item.id));
+    await db.insert(documentEvents).values({
+      documentId: item.id,
+      type: "source_mirror_retired",
+      message: "emploi-public mirror retired",
+      metadata: {
+        reason: "sante.gov.ma is primary for non-CHU concours",
+      },
+    });
+  }
+
+  if (nonChu.length) {
+    watcherLog("emploi-public.mirrors.retired", {
+      retired: nonChu.length,
+      ids: nonChu.map((item) => item.id),
+    });
+  }
+
+  return nonChu.length;
+}
+
 export async function discoverEmploiPublicLinks() {
-  const detailUrls = new Set(emploiPublicSeedDetails);
+  await retireNonChuEmploiPublicMirrors();
+  const savedDetails = await listSavedEmploiPublicDetailUrls();
+  const detailUrls = new Set(savedDetails);
 
   for (const sourceUrl of emploiPublicSources) {
     watcherLog("emploi-public.source.fetch.start", { sourceUrl });
@@ -260,6 +393,7 @@ export async function discoverEmploiPublicLinks() {
   }
 
   watcherLog("emploi-public.discover.done", {
+    savedDetails: savedDetails.length,
     details: detailUrls.size,
     found: results.length,
   });

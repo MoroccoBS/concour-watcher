@@ -2,6 +2,7 @@
 
 import { ArrowLeft, KeyRound, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ConcoursCalendarView } from "@/components/tracker/concours-calendar-view";
 import { ConcoursSidebarItem } from "@/components/tracker/concours-sidebar-item";
 import { MoroccoHeatmapModal } from "@/components/tracker/morocco-heatmap-modal";
 import { TrackerDetailPane } from "@/components/tracker/tracker-detail-pane";
@@ -42,6 +43,7 @@ export function TrackerShell() {
   const [draftToken, setDraftToken] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [heatmapOpen, setHeatmapOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSpecialties, setExpandedSpecialties] = useState<
@@ -98,6 +100,7 @@ export function TrackerShell() {
         onFilterChange={setFilter}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenHeatmap={() => setHeatmapOpen(true)}
+        onOpenCalendar={() => setCalendarOpen(true)}
       />
 
       {/* Main split viewport */}
@@ -252,6 +255,27 @@ export function TrackerShell() {
         onClose={() => setHeatmapOpen(false)}
         documentData={data}
       />
+
+      <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+        <DialogContent className="max-w-5xl rounded-xl border border-border bg-card p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Monthly concours calendar</DialogTitle>
+            <DialogDescription>
+              Calendar view for concours deadlines and exam dates.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4 sm:p-6">
+            <ConcoursCalendarView
+              cases={cases}
+              selectedCaseId={activeCaseId}
+              onSelectCase={(id) => {
+                setSelectedCaseId(id);
+                setCalendarOpen(false);
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

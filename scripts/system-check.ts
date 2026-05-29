@@ -2,7 +2,10 @@ import "dotenv/config";
 
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { parseEmploiPublicDetail } from "@/server/emploi-public";
+import {
+  parseEmploiPublicDetail,
+  parseEmploiPublicListing,
+} from "@/server/emploi-public";
 import { checkCandidateWithGemini } from "@/server/gemini";
 import { fetchMinistryResource } from "@/server/ministry-fetch";
 import { getWatcherHealth } from "@/server/runner-heartbeat";
@@ -150,6 +153,46 @@ async function runParserChecks() {
       emploiPublicLabels.includes("Liste d'attente") &&
       emploiPublicLabels.includes("Liste des convoqués"),
     { emploiPublicLabels },
+  );
+
+  const nonChuEmploiPublicLinks = parseEmploiPublicDetail(
+    `
+      <body>
+        <h1>مباريات التوظيف : ممرض من الدرجة الأولى - سُلمْ 10</h1>
+        <h3>الإدارة المنظمة وزارة الصحة والحماية الاجتماعية</h3>
+        <h3>آخر أجل لإيداع الترشيحات 22 يونيو 2026 - 16:30</h3>
+        <h3>تاريخ إجراء المباراة 28 يونيو 2026</h3>
+        <a href="/ar/تحميل/المباريات/arrete/ministry-duplicate">قرار فتح المباراة</a>
+      </body>
+    `,
+    "https://www.emploi-public.ma/ar/تفاصيل/المباريات/ministry-duplicate",
+  );
+
+  assertCheck(
+    "emploi-public non-CHU mirror skipped",
+    nonChuEmploiPublicLinks.length === 0,
+    { nonChuEmploiPublicLinks },
+  );
+
+  const emploiPublicListingLinks = parseEmploiPublicListing(`
+    <div class="s-item">
+      <a href="/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/live-2026" class="card">
+        <h2 class="card-title">مباراة لتوظيف ممرض من الدرجة الأولى - سلم 10</h2>
+        <div>تاريخ إجراء المباراة : 28 يونيو 2026</div>
+      </a>
+    </div>
+    <div class="s-item">
+      <a href="/ar/%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84/%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%D9%8A%D8%A7%D8%AA/other-grade" class="card">
+        <h2 class="card-title">مباراة لتوظيف تقني من الدرجة الثالثة - سلم 9</h2>
+      </a>
+    </div>
+  `);
+
+  assertCheck(
+    "emploi-public listing tolerant grade scan",
+    emploiPublicListingLinks.length === 1 &&
+      emploiPublicListingLinks[0]?.includes("live-2026"),
+    { emploiPublicListingLinks },
   );
 }
 
