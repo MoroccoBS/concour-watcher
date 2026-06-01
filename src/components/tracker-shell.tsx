@@ -257,7 +257,7 @@ export function TrackerShell() {
       />
 
       <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
-        <DialogContent className="max-w-5xl rounded-xl border border-border bg-card p-0">
+        <DialogContent className="sm:max-w-xl rounded-xl border border-border bg-card p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>Monthly concours calendar</DialogTitle>
             <DialogDescription>
