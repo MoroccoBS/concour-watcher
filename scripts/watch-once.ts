@@ -25,6 +25,7 @@ function getProcessLimit() {
 async function main() {
   const runnerId = getLocalRunnerId();
   const processLimit = getProcessLimit();
+  const runStartedAtMs = performance.now();
   watcherLog("watcher.run.start", { runnerId, processLimit });
   const run = await startWatcherRun({
     runnerId,
@@ -49,6 +50,7 @@ async function main() {
       await finishWatcherRun({
         id: run.id,
         status: "completed",
+        durationMs: performance.now() - runStartedAtMs,
         found: links.length,
         inserted: discovery.inserted,
         processed: processing.processed,
@@ -77,6 +79,7 @@ async function main() {
       await finishWatcherRun({
         id: run.id,
         status: "failed",
+        durationMs: performance.now() - runStartedAtMs,
         error: message,
         metadata: { processLimit },
       });

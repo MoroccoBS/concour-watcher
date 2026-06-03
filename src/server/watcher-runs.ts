@@ -6,6 +6,7 @@ import { watcherRuns } from "@/db/schema";
 type FinishInput = {
   id: string;
   status: "completed" | "failed";
+  durationMs?: number;
   found?: number;
   inserted?: number;
   processed?: number;
@@ -42,9 +43,10 @@ export async function finishWatcherRun(input: FinishInput) {
   if (!existing) {
     return null;
   }
-  const durationMs = existing
-    ? finishedAt.getTime() - existing.startedAt.getTime()
-    : null;
+  const durationMs =
+    typeof input.durationMs === "number" && Number.isFinite(input.durationMs)
+      ? Math.max(0, Math.round(input.durationMs))
+      : Math.max(0, finishedAt.getTime() - existing.startedAt.getTime());
 
   const [run] = await db
     .update(watcherRuns)

@@ -61,6 +61,7 @@ export function TrackerHeader({
 }) {
   const [watcherOpen, setWatcherOpen] = useState(false);
   const utils = trpc.useUtils();
+  const { isLoading, isRefetching } = trpc.documents.list.useQuery();
 
   return (
     <header className="sticky top-0 z-40 shrink-0 border-b border-border/80 bg-background/90 shadow-[0_1px_3px_rgba(0,0,0,0.01)] backdrop-blur-md">
@@ -150,6 +151,7 @@ export function TrackerHeader({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               className={"text-sm py-1"}
+              disabled={isLoading || isRefetching}
               variant={"secondary"}
               onClick={() =>
                 utils.documents.list.invalidate().then(() => {
@@ -268,8 +270,8 @@ function WatcherDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-xl border border-border bg-card p-0">
-        <DialogHeader className="border-b border-border/50 p-6">
+      <DialogContent className="max-w-lg rounded-xl border border-border bg-card p-0 flex flex-col max-h-[80vh]">
+        <DialogHeader className="border-b border-border/50 p-6 flex-shrink-0">
           <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
             <ServerCog data-icon="inline-start" />
             Local watcher
@@ -282,7 +284,7 @@ function WatcherDialog({
             when that runner last checked the source pages.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-2 p-6">
+        <div className="grid gap-2 p-6 overflow-y-auto flex-1">
           {rows.map(([label, value]) => (
             <div
               key={label}
@@ -343,8 +345,8 @@ function WatcherDialog({
                         {run.processed ?? 0}
                       </div>
                       <div className="text-stone-400">
-                        {run.durationMs
-                          ? `${Math.round(run.durationMs / 1000)}s`
+                        {run.durationMs != null
+                          ? `${Math.max(0, Math.round(run.durationMs / 1000))}s`
                           : "running"}
                       </div>
                     </div>

@@ -26,7 +26,7 @@ import { useFilterStore } from "@/store/filter-store";
 import { trpc } from "@/trpc/client";
 
 export function TrackerShell() {
-  const { data = [], isLoading, isRefetching } = trpc.documents.list.useQuery();
+  const { data = [], isLoading } = trpc.documents.list.useQuery();
   const { data: watcherHealth } = trpc.watcher.health.useQuery();
   const utils = trpc.useUtils();
   const updateAdmin = trpc.documents.updateAdmin.useMutation({
@@ -108,7 +108,7 @@ export function TrackerShell() {
         {/* Left Listing Sidebar */}
         <aside
           className={cn(
-            "flex w-full shrink-0 flex-col border-r border-border/30 bg-card/10 lg:h-full lg:w-[380px]",
+            "flex w-full shrink-0 flex-col border-r border-border/30 bg-card/10 lg:h-full lg:w-95",
             selectedCaseId && "hidden lg:flex",
           )}
         >
@@ -131,7 +131,7 @@ export function TrackerShell() {
 
           {/* Listing scrolling feed */}
           <div className="flex-1 overflow-y-auto divide-y divide-border/30">
-            {isLoading || isRefetching ? (
+            {isLoading ? (
               <div className="p-4 space-y-3">
                 {[1, 2, 3, 4].map((i) => (
                   <div
