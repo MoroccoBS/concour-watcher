@@ -12,11 +12,11 @@ import {
 import { getWatcherHealth } from "./runner-heartbeat";
 import { listWatcherRuns } from "./watcher-runs";
 
-export async function createContext(request: Request) {
+export async function createContext(request?: Request) {
   return {
     adminToken:
-      request.headers.get("x-admin-token") ??
-      request.headers.get("authorization")?.replace(/^Bearer\s+/i, ""),
+      request?.headers.get("x-admin-token") ??
+      request?.headers.get("authorization")?.replace(/^Bearer\s+/i, ""),
   };
 }
 

@@ -61,7 +61,9 @@ export function TrackerHeader({
 }) {
   const [watcherOpen, setWatcherOpen] = useState(false);
   const utils = trpc.useUtils();
-  const { isLoading, isRefetching } = trpc.documents.list.useQuery();
+  const documentsQuery = trpc.documents.list.useQuery(undefined, {
+    enabled: false,
+  });
 
   return (
     <header className="sticky top-0 z-40 shrink-0 border-b border-border/80 bg-background/90 shadow-[0_1px_3px_rgba(0,0,0,0.01)] backdrop-blur-md">
@@ -151,7 +153,7 @@ export function TrackerHeader({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               className={"text-sm py-1"}
-              disabled={isLoading || isRefetching}
+              disabled={documentsQuery.isRefetching}
               variant={"secondary"}
               onClick={() =>
                 utils.documents.list.invalidate().then(() => {

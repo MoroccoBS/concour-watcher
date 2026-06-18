@@ -19,15 +19,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAdminStore } from "@/store/admin-store";
 import { useFilterStore } from "@/store/filter-store";
 import { trpc } from "@/trpc/client";
 
 export function TrackerShell() {
-  const { data = [], isLoading } = trpc.documents.list.useQuery();
-  const { data: watcherHealth } = trpc.watcher.health.useQuery();
+  const [data] = trpc.documents.list.useSuspenseQuery();
+  const [watcherHealth] = trpc.watcher.health.useSuspenseQuery();
   const utils = trpc.useUtils();
   const updateAdmin = trpc.documents.updateAdmin.useMutation({
     onSuccess: () => utils.documents.list.invalidate(),
@@ -131,26 +130,7 @@ export function TrackerShell() {
 
           {/* Listing scrolling feed */}
           <div className="flex-1 overflow-y-auto divide-y divide-border/30">
-            {isLoading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="p-4 border border-border/50 bg-card rounded-md space-y-3 animate-pulse"
-                  >
-                    <div className="flex gap-2">
-                      <Skeleton className="h-3.5 w-12 rounded" />
-                      <Skeleton className="h-3.5 w-24 rounded" />
-                    </div>
-                    <Skeleton className="h-5 w-3/4 rounded" />
-                    <div className="flex justify-between pt-1">
-                      <Skeleton className="h-3 w-16 rounded" />
-                      <Skeleton className="h-3 w-20 rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : searchedCases.length === 0 ? (
+            {searchedCases.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground font-mono">
                 No concours matches found.
               </div>
