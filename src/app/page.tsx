@@ -5,12 +5,12 @@ import { HydrateClient, trpc } from "@/trpc/server";
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
   void trpc.documents.list.prefetch();
   void trpc.watcher.health.prefetch();
 
   return (
-    <HydrateClient >
+    <HydrateClient>
       <Suspense fallback={<TrackerShellFallback />}>
         <TrackerShell />
       </Suspense>
