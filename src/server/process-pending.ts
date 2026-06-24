@@ -537,7 +537,7 @@ function buildDisplayTitle(extraction: {
       : null,
   ].filter(Boolean);
 
-  return parts.join(" · ") || "Concours ITS";
+  return parts.join(" · ") || extraction.title || "Concours ITS";
 }
 
 function getDocumentTypeLabel(documentType: DocumentType) {

@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 
 import { type AiExtraction, aiExtractionSchema } from "./validation";
 import { watcherLog } from "./watcher-log";
@@ -117,6 +117,9 @@ export async function extractConcoursWithGemini(
       responseMimeType: "application/json",
       responseSchema,
       temperature: secondPass ? 0 : 0.1,
+      thinkingConfig: {
+        thinkingLevel: ThinkingLevel.HIGH,
+      },
     },
   });
 
