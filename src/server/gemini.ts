@@ -85,7 +85,10 @@ export async function extractConcoursWithGemini(
     "Extract only facts visible in the PDF. The notice can be Arabic, French, scanned, or mixed.",
     "Focus on radiology technologist opportunities: radiologie, تقني في الأشعة, الأشعة, rayon.",
     "Dates must be ISO 8601 with Africa/Casablanca offset when a date/time is visible.",
-    "If the document is not a recruitment notice, classify it accurately and leave unavailable fields null.",
+    "Classify follow-up documents independently: convocation/listes des convoques, results, assignment/affectation, and planning/programme are not recruitment notices.",
+    "Only recruitment notice/avis PDFs may include totalSeats, radiologySeats, applicationDeadline, formUrl, or specialtyRows.",
+    "For lists, convocations, results, assignments, and planning documents, set totalSeats=null, radiologySeats=null, formUrl=null, and specialtyRows=[].",
+    "If the document is not a recruitment notice, classify it accurately and leave unavailable notice fields null.",
     "Return strict JSON only. Include sourceNotes with short evidence and page numbers.",
     secondPass
       ? "This is a verification pass. Be skeptical and call out uncertainty through confidence."

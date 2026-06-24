@@ -61,6 +61,71 @@ export const aiExtractionSchema = z.object({
 });
 
 export type AiExtraction = z.infer<typeof aiExtractionSchema>;
+export type DocumentType = AiExtraction["documentType"];
+
+export function documentTypeFromLabel(value?: string | null): DocumentType {
+  const label = value
+    ?.toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+
+  if (!label) return "unknown";
+  if (label.includes("planning") || label.includes("programme")) {
+    return "planning";
+  }
+  if (
+    label.includes("result") ||
+    label.includes("rslts") ||
+    label.includes("liste definitive")
+  ) {
+    return "results";
+  }
+  if (
+    label.includes("affectation") ||
+    label.includes("prise de service") ||
+    label.includes("liste d'attente")
+  ) {
+    return "assignment";
+  }
+  if (label.includes("convoque") || label.includes("conv")) {
+    return "convocation";
+  }
+  if (label.includes("avis") || label.includes("postes ouverts")) {
+    return "notice";
+  }
+
+  return "unknown";
+}
+
+export function supportsSeatAllocation(documentType: DocumentType) {
+  return documentType === "notice";
+}
+
+export function normalizeExtractionForDocumentType(
+  extraction: AiExtraction,
+  updateLabel?: string | null,
+): AiExtraction {
+  const labelType = documentTypeFromLabel(updateLabel);
+  const documentType =
+    labelType === "unknown" ? extraction.documentType : labelType;
+
+  if (supportsSeatAllocation(documentType)) {
+    return {
+      ...extraction,
+      documentType,
+    };
+  }
+
+  return {
+    ...extraction,
+    documentType,
+    applicationDeadline: null,
+    totalSeats: null,
+    radiologySeats: null,
+    formUrl: null,
+    specialtyRows: [],
+  };
+}
 
 function parseMaybeDate(value?: string | null) {
   if (!value) return null;
@@ -78,8 +143,11 @@ export function isRadiologyText(value: string) {
 export function validateExtraction(extraction: AiExtraction) {
   const issues: string[] = [];
   const examDate = parseMaybeDate(extraction.examDate);
-  const applicationDeadline = parseMaybeDate(extraction.applicationDeadline);
-  const rows = extraction.specialtyRows;
+  const hasSeatAllocation = supportsSeatAllocation(extraction.documentType);
+  const applicationDeadline = hasSeatAllocation
+    ? parseMaybeDate(extraction.applicationDeadline)
+    : null;
+  const rows = hasSeatAllocation ? extraction.specialtyRows : [];
   const radiologyRows = rows.filter(
     (row) => row.isRadiology || isRadiologyText(row.specialty),
   );
@@ -114,22 +182,31 @@ export function validateExtraction(extraction: AiExtraction) {
     issues.push("Radiology seats do not match the specialty table.");
   }
 
-  if (extraction.isRadiologyRelevant && radiologyRows.length === 0) {
+  if (
+    hasSeatAllocation &&
+    extraction.isRadiologyRelevant &&
+    radiologyRows.length === 0
+  ) {
     issues.push("Marked radiology-relevant without a radiology specialty row.");
   }
 
   const needsSecondPass =
     extraction.confidence < 80 ||
     issues.length > 0 ||
-    (extraction.isRadiologyRelevant && radiologyRows.length === 0);
+    (hasSeatAllocation &&
+      extraction.isRadiologyRelevant &&
+      radiologyRows.length === 0);
 
   return {
     issues,
     needsSecondPass,
     examDate,
     applicationDeadline,
-    radiologySeats: radiologySeats || extraction.radiologySeats || null,
+    radiologySeats: hasSeatAllocation
+      ? radiologySeats || extraction.radiologySeats || null
+      : null,
     isRadiologyRelevant:
-      extraction.isRadiologyRelevant || radiologyRows.length > 0,
+      hasSeatAllocation &&
+      (extraction.isRadiologyRelevant || radiologyRows.length > 0),
   };
 }

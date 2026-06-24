@@ -147,6 +147,7 @@ function getDiscoveryEvent(
   existingForListings: Array<typeof concoursDocuments.$inferSelect>,
 ) {
   const label = item.updateLabel?.toLowerCase() ?? "";
+  const normalizedLabel = label.normalize("NFD").replace(/\p{Diacritic}/gu, "");
   const hadNoAttachment = existingForListings.some(
     (existing) =>
       existing.listingKey === item.listingKey && !existing.hasAttachment,
@@ -168,7 +169,7 @@ function getDiscoveryEvent(
     };
   }
 
-  if (label.includes("résultat") || label.includes("result")) {
+  if (normalizedLabel.includes("result")) {
     return {
       type: "results_added",
       message: "Results added",
@@ -176,7 +177,29 @@ function getDiscoveryEvent(
     };
   }
 
-  if (label.includes("liste")) {
+  if (
+    normalizedLabel.includes("convoque") ||
+    normalizedLabel.includes("convocation")
+  ) {
+    return {
+      type: "convocation_list_added",
+      message: "Convocation list added",
+      headline: "📋 <b>Liste des convoqués ajoutée</b>",
+    };
+  }
+
+  if (
+    normalizedLabel.includes("affectation") ||
+    normalizedLabel.includes("prise de service")
+  ) {
+    return {
+      type: "assignment_added",
+      message: "Assignment document added",
+      headline: "📌 <b>Affectation ajoutée</b>",
+    };
+  }
+
+  if (normalizedLabel.includes("liste")) {
     return {
       type: "list_added",
       message: "List document added",

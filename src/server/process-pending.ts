@@ -11,7 +11,12 @@ import { isChuOrganizer, normalizeArabic } from "./emploi-public";
 import { checkCandidateWithGemini, extractConcoursWithGemini } from "./gemini";
 import { fetchMinistryResource } from "./ministry-fetch";
 import { sendTelegramMessage } from "./telegram";
-import { validateExtraction } from "./validation";
+import {
+  type DocumentType,
+  normalizeExtractionForDocumentType,
+  supportsSeatAllocation,
+  validateExtraction,
+} from "./validation";
 import { watcherLog, watcherWarn } from "./watcher-log";
 
 export async function processPendingDocuments(
@@ -129,9 +134,9 @@ export async function processPendingDocuments(
         id: document.id,
         bytes: pdfBytes.byteLength,
       });
-      const firstPass = await extractConcoursWithGemini(
-        pdfBytes,
-        document.pdfUrl,
+      const firstPass = normalizeExtractionForDocumentType(
+        await extractConcoursWithGemini(pdfBytes, document.pdfUrl),
+        document.updateLabel,
       );
       let finalExtraction = firstPass;
       let validation = validateExtraction(firstPass);
@@ -145,10 +150,9 @@ export async function processPendingDocuments(
 
       if (validation.needsSecondPass) {
         watcherLog("processing.second-pass.start", { id: document.id });
-        finalExtraction = await extractConcoursWithGemini(
-          pdfBytes,
-          document.pdfUrl,
-          true,
+        finalExtraction = normalizeExtractionForDocumentType(
+          await extractConcoursWithGemini(pdfBytes, document.pdfUrl, true),
+          document.updateLabel,
         );
         validation = validateExtraction(finalExtraction);
         watcherLog("processing.validation.second-pass", {
@@ -281,6 +285,7 @@ export async function processPendingDocuments(
           formatProcessedMessage({
             title: buildDisplayTitle(finalExtraction),
             pdfUrl: document.pdfUrl,
+            documentType: finalExtraction.documentType,
             examDate: validation.examDate,
             deadline: validation.applicationDeadline,
             totalSeats: finalExtraction.totalSeats ?? null,
@@ -503,10 +508,25 @@ async function runCandidateCheckSafely(input: {
 }
 
 function buildDisplayTitle(extraction: {
+  title?: string | null;
+  documentType?: DocumentType;
   region?: string | null;
   totalSeats?: number | null;
   radiologySeats?: number | null;
 }) {
+  if (!supportsSeatAllocation(extraction.documentType ?? "unknown")) {
+    return (
+      [
+        getDocumentTypeLabel(extraction.documentType ?? "unknown"),
+        extraction.region?.replace(/^direction régionale\s*/i, "").trim(),
+      ]
+        .filter(Boolean)
+        .join(" · ") ||
+      extraction.title ||
+      "Document ITS"
+    );
+  }
+
   const parts = [
     extraction.region?.replace(/^direction régionale\s*/i, "").trim(),
     typeof extraction.totalSeats === "number"
@@ -518,6 +538,44 @@ function buildDisplayTitle(extraction: {
   ].filter(Boolean);
 
   return parts.join(" · ") || "Concours ITS";
+}
+
+function getDocumentTypeLabel(documentType: DocumentType) {
+  switch (documentType) {
+    case "notice":
+      return "Avis de concours";
+    case "convocation":
+      return "Liste des convoqués";
+    case "results":
+      return "Résultats";
+    case "assignment":
+      return "Affectation";
+    case "planning":
+      return "Planning";
+    default:
+      return "Document ITS";
+  }
+}
+
+function getProcessedHeadline(documentType: DocumentType, hasIssues: boolean) {
+  if (hasIssues) {
+    return `⚠️ <b>${getDocumentTypeLabel(documentType)} à vérifier</b>`;
+  }
+
+  switch (documentType) {
+    case "notice":
+      return "✅ <b>Avis de concours analysé</b>";
+    case "convocation":
+      return "📋 <b>Liste des convoqués analysée</b>";
+    case "results":
+      return "🏁 <b>Résultats analysés</b>";
+    case "assignment":
+      return "📌 <b>Affectation analysée</b>";
+    case "planning":
+      return "🗓️ <b>Planning analysé</b>";
+    default:
+      return "✅ <b>Document ITS analysé</b>";
+  }
 }
 
 function shortDate(value: Date | null) {
@@ -532,6 +590,7 @@ function shortDate(value: Date | null) {
 function formatProcessedMessage(input: {
   title: string;
   pdfUrl: string;
+  documentType: DocumentType;
   examDate: Date | null;
   deadline: Date | null;
   totalSeats: number | null;
@@ -540,15 +599,14 @@ function formatProcessedMessage(input: {
   issues: string[];
   candidateMatched: boolean | null;
 }) {
+  const hasSeatAllocation = supportsSeatAllocation(input.documentType);
   return [
-    input.issues.length
-      ? "⚠️ <b>Concours ITS à vérifier</b>"
-      : "✅ <b>Concours ITS analysé</b>",
+    getProcessedHeadline(input.documentType, input.issues.length > 0),
     `📍 <b>${input.title}</b>`,
     `🗓️ Examen: ${shortDate(input.examDate)}`,
-    `⏳ Deadline: ${shortDate(input.deadline)}`,
-    `💺 Total: ${input.totalSeats ?? "?"}`,
-    `🩻 Radiologie: ${input.radiologySeats ?? "?"}`,
+    hasSeatAllocation ? `⏳ Deadline: ${shortDate(input.deadline)}` : null,
+    hasSeatAllocation ? `💺 Total: ${input.totalSeats ?? "?"}` : null,
+    hasSeatAllocation ? `🩻 Radiologie: ${input.radiologySeats ?? "?"}` : null,
     input.candidateMatched === true
       ? "🎯 Ton nom est détecté dans ce document"
       : null,
