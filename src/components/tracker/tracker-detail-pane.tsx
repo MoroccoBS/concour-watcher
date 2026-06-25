@@ -1,7 +1,6 @@
 import {
   CalendarDays,
   CheckCircle2,
-  ChevronDown,
   Clock,
   ExternalLink,
   FileText,
@@ -33,6 +32,7 @@ import {
   DossierAnnotationsNotepad,
   DossierFunnelStepper,
 } from "./decision-controls";
+import { DocumentTypeSummary } from "./document-type-summary";
 import { displayTitle } from "./tracker-utils";
 import type { ConcoursCase, DocumentItem } from "./types";
 
@@ -416,77 +416,11 @@ function DocumentSection({
           </div>
         ) : null}
 
-        {item.specialtyRows.length ? (
-          <div className="overflow-hidden rounded border border-border bg-background/30 shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between gap-3 bg-muted/40 px-3.5 py-2 text-left text-xs font-semibold text-stone-700 transition-colors hover:bg-muted/70 cursor-pointer"
-              onClick={onToggleSpecialties}
-            >
-              <span className="font-sans">
-                Specialties ({item.specialtyRows.length}) ·{" "}
-                <strong className="font-mono text-stone-900 font-bold">
-                  {item.specialtyRows.reduce((sum, row) => sum + row.seats, 0)}
-                </strong>{" "}
-                seats
-              </span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200",
-                  expanded && "rotate-180",
-                )}
-              />
-            </button>
-            {expanded ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left bg-background/50">
-                  <thead>
-                    <tr className="bg-muted/30 border-b border-border/50">
-                      <th className="px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-stone-500">
-                        Specialty
-                      </th>
-                      <th className="px-3.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-stone-500">
-                        Frame
-                      </th>
-                      <th className="px-3.5 py-1.5 text-right font-mono text-[9px] font-bold uppercase tracking-wider text-stone-500">
-                        Seats
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {item.specialtyRows.map((row) => (
-                      <tr
-                        key={row.id}
-                        className={cn(
-                          "border-t border-border/40 hover:bg-muted/20 transition-colors",
-                          row.isRadiology &&
-                            "bg-emerald-500/5 text-accent-success font-medium border-y border-emerald-100/40",
-                        )}
-                      >
-                        <td className="px-3.5 py-1.5 text-xs text-stone-800">
-                          {row.specialty}
-                        </td>
-                        <td className="px-3.5 py-1.5 text-[11px] text-stone-500 font-sans">
-                          {row.frame ?? "—"}
-                        </td>
-                        <td
-                          className={cn(
-                            "px-3.5 py-1.5 text-right text-xs font-mono font-semibold",
-                            row.isRadiology
-                              ? "text-accent-success"
-                              : "text-stone-900",
-                          )}
-                        >
-                          {row.seats}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        <DocumentTypeSummary
+          item={item}
+          expanded={expanded}
+          onToggleSpecialties={onToggleSpecialties}
+        />
       </div>
     </div>
   );

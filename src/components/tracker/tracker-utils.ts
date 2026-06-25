@@ -81,6 +81,11 @@ export function displayTitle(item: DocumentItem) {
     .replace(/direction régionale/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (item.documentType !== "notice") {
+    const typeLabel = documentTypeLabel(item);
+    return [typeLabel, region || item.title].filter(Boolean).join(" · ");
+  }
+
   const parts = [
     region || item.title,
     item.totalSeats ? `${item.totalSeats} postes` : null,
@@ -88,6 +93,21 @@ export function displayTitle(item: DocumentItem) {
   ].filter(Boolean);
 
   return parts.join(" · ");
+}
+
+function documentTypeLabel(item: DocumentItem) {
+  switch (item.documentType) {
+    case "convocation":
+      return "Liste des convoqués";
+    case "planning":
+      return "Planning";
+    case "results":
+      return "Résultats";
+    case "assignment":
+      return "Affectation";
+    default:
+      return item.updateLabel ?? null;
+  }
 }
 
 export function decisionAccent(status: ApplicationStatus) {
