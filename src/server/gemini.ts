@@ -188,7 +188,7 @@ export async function checkCandidateWithGemini(
     pdfBytes: pdfBytes.byteLength,
   });
   const prompt = [
-    "You are checking whether a candidate name appears in a Moroccan Ministry of Health concours PDF.",
+    "You are checking whether a candidate name appears in a Moroccan Ministry of Health concours PDF, and in the 'LISTE DES CANDIDAT(E)S ADMIS' not in 'LISTE D'ATTENTE'.",
     "The PDF may be Arabic, French, scanned, or mixed. Check tables, annexes, lists, and all visible pages.",
     "Names can have accents, Arabic/French transliteration differences, uppercase/lowercase differences, FIRST NAME before SURNAME or vice versa, and spacing differences.",
     "Only mark found=true when the candidate is very likely the same person. If unsure, found=false with evidence explaining the uncertainty.",
